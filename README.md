@@ -6,16 +6,31 @@ VPS / 家宽出口分流检测。不比路由首跳，直接看每个目标实�
 
 ## 一键运行
 
-在要检测的机器上执行，一般约 2 分钟：
+在要检测的机器上执行，选好范围后一般约 2 分钟：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh)
 ```
 
-只测部分分类：
+跳过菜单，直接指定分类或测全部：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh) -c ai,meta,telegram
+```
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh) -y
+```
+
+运行时显示每一步的进度：
+
+```text
+  ✓ 确认出口             203.0.113.63 · 地区 tw  1s
+  ✓ 准备探测             90 个目标 · 路由 mtr-icmp · 预计约 2 分钟  2s
+  ✓ 校准出口             已发现 1 个出口  6s
+  ✓ 加密 DNS             已发现 2 个出口  25s
+  ✓ 明文 DNS 触发测试    触发 4 / 可测 23  9s
+  ⠹ 系统 DNS 第 1/2 轮   ████████░░░░░░░░░░░░ 36/90 10s  www.okx.com
 ```
 
 需要 bash 4+、curl、awk。建议装上 mtr 和 dig，缺了会跳过对应检查：
@@ -35,7 +50,7 @@ apt install -y mtr-tiny dnsutils
       13 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流
       26 个目标在分流名单内：加密 DNS 下也走分流
 
-出口
+── 出口 ──────────────────────────────────────────────────────────
   A 默认  203.0.113.63      AS64500 Example Broadband  TW Taipei
          回显 188 次 · 线路 10.0.1.1 > 203.0.113.1
   B       198.51.100.125    AS64501 Example Transit  TW Taipei
@@ -43,7 +58,7 @@ apt install -y mtr-tiny dnsutils
   C       192.0.2.36        AS64500 Example Broadband  TW Taipei
          回显 23 次 · 线路 10.0.2.1 > 10.42.0.1
 
-分类概览（目标数）
+── 分类概览（目标数） ────────────────────────────────────────────
              系统 DNS           加密 DNS
                A   B   C   ?      A   B   C   ?
   AI           9   .   2   .      9   .   2   .
@@ -52,12 +67,12 @@ apt install -y mtr-tiny dnsutils
   虚拟币      12   .   .   .     12   .   .   .
   银行         .   8   .   .      6   2   .   .
 
-明文 DNS 触发测试（外地节点 IP，明文查询前后的真实出口）
+── 明文 DNS 触发测试（外地节点 IP，明文查询前后的真实出口） ──────
   www.facebook.com                  57.144.248.1     A → B
   accounts.google.com               192.178.226.84   A → C
   触发 4 / 可测 23（另有 10 个拿不到回显）
 
-明细
+── 明细 ──────────────────────────────────────────────────────────
   目标                                系统 DNS             轮次  加密  证据
   AI
     chatgpt.com                       A 203.0.113.63       2/2   A     直接·CF
@@ -87,6 +102,34 @@ apt install -y mtr-tiny dnsutils
 | 名单内 | 加密 DNS 下也走分流，解析到的 IP 已在上游名单里 |
 
 名单内可能是静态名单，也可能是这个 IP 已经被别的明文查询写进去了。触发测试能看出上游是否按 DNS 写名单。
+
+## 分享结果
+
+报告末尾会附一段可以直接复制的摘要，IP 只保留前两段，不带主机名和路由：
+
+```text
+splitcheck 分流检测 · 2026-11-06 · 地区 tw · 90 个目标
+结论：有分流，3 个出口，其中 1 个不是默认运营商
+A 默认  203.0.*.*  AS64500 Example Broadband  TW
+B  198.51.*.*  AS64501 Example Transit  TW
+C  192.0.*.*  AS64500 Example Broadband  TW
+AI：A 9 · C 2
+Meta：A 1 · B 9
+Telegram：B 8
+虚拟币：A 12
+银行：B 8
+明文 DNS 触发：是（触发 4 / 可测 23）
+证据：直接 60 · 推断 30 · 未确认 0
+https://github.com/YePiXpert/splitcheck
+```
+
+要贴到论坛的完整表格，在终端里运行时结尾回答 `y`，或者加 `-m` 直接输出 Markdown：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh) -m > report.md
+```
+
+默认打码，要完整 IP 就加 `--no-mask`。摘要上面的完整报告没有打码，分享时只复制摘要。
 
 ## 怎么判断的
 
@@ -136,6 +179,9 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 -b, --brief           只输出结论和分类概览
 -v, --verbose         额外输出每一轮的 IP、路径和证据
 -j, --json            输出 JSON
+-m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码
+    --no-mask         分享摘要和 Markdown 里显示完整 IP
+-y, --yes             不显示启动菜单，直接测全部分类
     --no-color        不用颜色
 ```
 

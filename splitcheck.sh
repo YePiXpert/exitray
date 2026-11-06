@@ -24,7 +24,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 
 ROUNDS=2
@@ -39,9 +39,12 @@ USE_ROUTE=1
 USE_DNS_TEST=1
 USE_SNIFF=1
 JSON=0
+MARKDOWN=0
+MASK=1
 BRIEF=0
 VERBOSE=0
 USE_COLOR=1
+STDIN_TTY=0
 
 WORK=""
 TRACER=none
@@ -79,6 +82,9 @@ usage() {
   -b, --brief           只输出结论和分类概览
   -v, --verbose         额外输出每一轮的 IP、路径和证据
   -j, --json            输出 JSON
+  -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
+      --no-mask         分享摘要和 Markdown 里显示完整 IP
+  -y, --yes             不显示启动菜单，直接测全部分类
       --no-color        不用颜色
   -V, --version         显示版本
   -h, --help            显示帮助
@@ -275,18 +281,137 @@ EOF
 }
 
 die() {
+  (( UI_ON )) && printf '\r\033[K' >&2
   printf 'splitcheck: %s\n' "$*" >&2
   exit 1
 }
 
-progress() {
-  [[ -t 2 ]] && printf '\r\033[K%s' "$*" >&2
-  return 0
+# ---------- 界面：全部写到 stderr，重定向 stdout 时不受影响 ----------
+
+UI=0
+UI_ON=0
+MENU_SHOWN=0
+U_R='' U_B='' U_D='' U_G='' U_C='' U_Y=''
+SPIN=0
+SPIN_FRAMES=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+STEP_LABEL='' STEP_TOTAL=0 STEP_FILE='' STEP_BASE=0 STEP_T0=0 STEP_DETAIL=''
+
+ui_setup() {
+  [[ -t 2 ]] || return 0
+  UI=1
+  if (( USE_COLOR )); then
+    U_R=$'\033[0m'; U_B=$'\033[1m'; U_D=$'\033[2m'
+    U_G=$'\033[32m'; U_C=$'\033[36m'; U_Y=$'\033[33m'
+  fi
 }
 
-progress_done() {
-  [[ -t 2 ]] && printf '\r\033[K' >&2
-  return 0
+ui_title() {
+  (( UI )) || return 0
+  UI_ON=1
+  # 刷新进度时隐藏光标、关闭自动换行，退出时恢复
+  printf '\033[?25l\033[?7l' >&2
+  # 菜单已经显示过名称，这里只留分隔线
+  (( MENU_SHOWN )) || printf '\n  %ssplitcheck %s%s  VPS / 家宽出口分流检测' "$U_B" "$VERSION" "$U_R" >&2
+  printf '\n  %s────────────────────────────────────────────%s\n\n' "$U_D" "$U_R" >&2
+}
+
+ui_finish() {
+  (( UI_ON )) || return 0
+  printf '\r\033[K\033[?7h\033[?25h\n' >&2
+  UI_ON=0
+}
+
+# 按显示宽度补空格：C locale 下汉字 3 字节占 2 格
+ui_pad() {
+  local s=$1 ascii=${1//[^[:ascii:]]/} hb cells
+  hb=$(( ${#s} - ${#ascii} ))
+  cells=$(( ${#ascii} + hb * 2 / 3 ))
+  printf '%s%*s' "$s" $(( $2 > cells ? $2 - cells : 0 )) ''
+}
+
+ui_lines() {
+  local n
+  n=$(wc -l < "$1" 2>/dev/null)
+  printf '%s' $(( ${n:-0} ))
+}
+
+ui_paint() {
+  (( UI_ON )) || return 0
+  local frame=${SPIN_FRAMES[SPIN % 10]} finished filled i bar='' line
+  SPIN=$((SPIN + 1))
+  line="  ${U_C}${frame}${U_R} $(ui_pad "$STEP_LABEL" 20)"
+  if (( STEP_TOTAL > 0 )); then
+    finished=$(( $(ui_lines "$STEP_FILE") - STEP_BASE ))
+    (( finished > STEP_TOTAL )) && finished=$STEP_TOTAL
+    filled=$(( finished * 20 / STEP_TOTAL ))
+    for (( i = 0; i < 20; i++ )); do
+      if (( i < filled )); then bar+='█'; else bar+='░'; fi
+    done
+    line+=" ${U_C}${bar}${U_R} $finished/$STEP_TOTAL"
+  fi
+  line+=" ${U_D}$((SECONDS - STEP_T0))s${STEP_DETAIL:+  $STEP_DETAIL}${U_R}"
+  printf '\r\033[K%s' "$line" >&2
+}
+
+# 标签 [总数 计数文件]：计数文件每完成一项多一行
+step_begin() {
+  STEP_LABEL=$1 STEP_TOTAL=${2:-0} STEP_FILE=${3:-} STEP_T0=$SECONDS STEP_DETAIL='' STEP_BASE=0
+  [[ -z $STEP_FILE ]] || STEP_BASE=$(ui_lines "$STEP_FILE")
+  ui_paint
+}
+
+step_end() {
+  (( UI_ON )) || return 0
+  printf '\r\033[K  %s✓%s %s %s  %s%ss%s\n' "$U_G" "$U_R" "$(ui_pad "$STEP_LABEL" 20)" "$1" "$U_D" "$((SECONDS - STEP_T0))" "$U_R" >&2
+}
+
+ui_warn() {
+  (( UI_ON )) || return 0
+  printf '\r\033[K  %s! %s%s\n' "$U_Y" "$1" "$U_R" >&2
+}
+
+# 没带参数、在终端里直接运行时显示
+show_menu() {
+  local choice cats c
+  MENU_SHOWN=1
+  printf '\n  %ssplitcheck %s%s  VPS / 家宽出口分流检测\n' "$U_B" "$VERSION" "$U_R" >&2
+  cat >&2 <<'EOF'
+
+  请选择检测范围：
+
+    1) 完整检测    全部分类，约 2 分钟
+    2) AI 和社媒   AI、Meta、Telegram、社媒、Google
+    3) 金融和购物  金融支付、虚拟币、银行、电商购物
+    4) 流媒体      流媒体、Google
+    5) 自选分类    输入分类名
+    6) 快速检测    全部分类，不测 DNS 触发，约 1 分钟
+    0) 退出
+EOF
+  while :; do
+    printf '\n  请输入 [默认 1]: ' >&2
+    IFS= read -r choice </dev/tty || choice=1
+    case ${choice:-1} in
+      1) return 0 ;;
+      2) CATS=ai,meta,telegram,social,google; return 0 ;;
+      3) CATS=finance,crypto,bank,shop; return 0 ;;
+      4) CATS=stream,google; return 0 ;;
+      5)
+        printf '  可选：ai meta telegram social google stream finance crypto bank shop local\n  用逗号分隔: ' >&2
+        IFS= read -r cats </dev/tty || cats=''
+        cats=${cats// /}
+        for c in ${cats//,/ }; do
+          case $c in
+            ai|meta|telegram|social|google|stream|finance|crypto|bank|shop|local) ;;
+            *) printf '  没有这个分类: %s\n' "$c" >&2; cats=''; break ;;
+          esac
+        done
+        [[ -n $cats ]] && { CATS=$cats; return 0; }
+        ;;
+      6) USE_DNS_TEST=0; USE_SNIFF=0; return 0 ;;
+      0|q) exit 0 ;;
+      *) printf '  请输入 0 到 6\n' >&2 ;;
+    esac
+  done
 }
 
 need_arg() {
@@ -310,6 +435,9 @@ parse_args() {
       -b|--brief)    BRIEF=1; shift ;;
       -v|--verbose)  VERBOSE=1; shift ;;
       -j|--json)     JSON=1; shift ;;
+      -m|--markdown) MARKDOWN=1; shift ;;
+      --no-mask)     MASK=0; shift ;;
+      -y|--yes)      shift ;;
       --no-color)    USE_COLOR=0; shift ;;
       -V|--version)  echo "splitcheck $VERSION"; exit 0 ;;
       -h|--help)     usage; exit 0 ;;
@@ -342,6 +470,7 @@ check_deps() {
 
 cleanup() {
   local pids
+  (( UI_ON )) && printf '\r\033[K\033[?7h\033[?25h' >&2
   pids=$(jobs -p 2>/dev/null)
   [[ -n $pids ]] && kill $pids 2>/dev/null
   [[ -n $WORK && -d $WORK ]] && rm -rf "$WORK"
@@ -625,11 +754,22 @@ spawn() {
       RUNNING=0
     fi
   fi
+  ui_paint
 }
 
 wait_all() {
+  if (( UI_ON )); then
+    while [[ -n $(jobs -rp) ]]; do
+      ui_paint
+      sleep 0.2
+    done
+  fi
   wait
   RUNNING=0
+}
+
+exits_so_far() {
+  awk -F'\t' '$7 != "-" && !s[$7]++ { n++ } END { print n + 0 }' "$WORK/rows.tsv"
 }
 
 probe_calibration() {
@@ -652,9 +792,11 @@ probe_calibration() {
 
 run_calibration() {
   local method host url ip
+  step_begin "校准出口"
   cal_list > "$WORK/cal.txt"
   # 先把 IP 解析好（只走 DoH），探测时再钉到 IP 上
   while read -r method host url; do
+    ui_paint
     if [[ -n $PROXY ]]; then
       printf '%s %s %s -\n' "$method" "$host" "$url"
     else
@@ -663,10 +805,16 @@ run_calibration() {
       done
     fi
   done < "$WORK/cal.txt" > "$WORK/cal_pinned.txt"
+  STEP_FILE="$WORK/rows.tsv"
+  STEP_BASE=$(ui_lines "$STEP_FILE")
+  STEP_TOTAL=$(ui_lines "$WORK/cal_pinned.txt")
   while read -r method host url ip; do
+    STEP_DETAIL=$host
     spawn probe_calibration "$method" "$host" "$url" "$ip"
   done < "$WORK/cal_pinned.txt"
+  STEP_DETAIL=''
   wait_all
+  step_end "已发现 $(exits_so_far) 个出口"
 }
 
 probe_target() {
@@ -718,17 +866,20 @@ update_page_names() {
 }
 
 run_pass() {
-  local pass=$1 total=$2 label=$3 r i count group name
-  count=$(wc -l < "$WORK/targets.txt")
+  local pass=$1 total=$2 label=$3 r count group name step
+  count=$(ui_lines "$WORK/targets.txt")
   for (( r = 1; r <= total; r++ )); do
-    i=0
+    step=$label
+    (( total > 1 )) && step="$label 第 $r/$total 轮"
+    step_begin "$step" "$count" "$WORK/rows.tsv"
     while read -r group name; do
-      i=$((i + 1))
-      progress "$label 第 $r/$total 轮  $i/$count"
+      STEP_DETAIL=$name
       spawn probe_target "$pass" "$group" "$name" "$r"
     done < "$WORK/targets.txt"
+    STEP_DETAIL=''
     wait_all
     (( r == 1 )) && update_page_names
+    step_end "已发现 $(exits_so_far) 个出口"
   done
 }
 
@@ -759,15 +910,19 @@ trigger_one() {
 run_trigger() {
   if ! command -v dig >/dev/null 2>&1; then
     printf 'trigger\tno-dig\n' >> "$WORK/env.tsv"
+    ui_warn "没有 dig，跳过明文 DNS 触发测试（Debian: apt install -y dnsutils）"
     return 0
   fi
   local group name
   awk '$2 !~ /^[0-9.]+$/ && c[$1]++ < 3' "$WORK/targets.txt" > "$WORK/samples.txt"
+  step_begin "明文 DNS 触发测试" "$(ui_lines "$WORK/samples.txt")" "$WORK/trigger.tsv"
   while read -r group name; do
-    progress "明文 DNS 触发测试  $name"
+    STEP_DETAIL=$name
     spawn trigger_one "$group" "$name"
   done < "$WORK/samples.txt"
+  STEP_DETAIL=''
   wait_all
+  step_end "$(awk -F'\t' '$4 != "-" { t++; if ($4 != $5) f++ } END { printf "触发 %d / 可测 %d", f, t }' "$WORK/trigger.tsv")"
 }
 
 sniff_one() {
@@ -785,11 +940,14 @@ run_sniff() {
   [[ -n $base ]] || return 0
   printf 'sniff_base\t%s\n' "$base" >> "$WORK/env.tsv"
   awk '$2 !~ /^[0-9.]+$/ && c[$1]++ < 2 { print $2 }' "$WORK/targets.txt" > "$WORK/sni.txt"
+  step_begin "SNI 嗅探测试" "$(ui_lines "$WORK/sni.txt")" "$WORK/sniff.tsv"
   while read -r sni; do
-    progress "SNI 嗅探测试  $sni"
+    STEP_DETAIL=$sni
     spawn sniff_one "$sni"
   done < "$WORK/sni.txt"
+  STEP_DETAIL=''
   wait_all
+  step_end "$(awk -F'\t' -v b="$base" '{ n++; if ($2 != b) c++ } END { printf "%d 个域名，%d 个出口变化", n, c }' "$WORK/sniff.tsv")"
 }
 
 # DNS 权威看到的来源 IP，走 UDP，可以顺带对比 UDP 的出口
@@ -874,8 +1032,9 @@ json_str() {
 lookup_exits() {
   local letter ip seen def sig j org cc city host flags kind
   : > "$WORK/exits_info.tsv"
+  step_begin "查询出口信息" "$(ui_lines "$WORK/exits.tsv")" "$WORK/exits_info.tsv"
   while IFS=$'\t' read -r letter ip seen def sig; do
-    progress "查询出口信息  $ip"
+    ui_paint
     j=$(ipinfo_get "$ip/json" | tr -d '\n')
     org=$(json_str "$j" org)
     cc=$(json_str "$j" country)
@@ -889,6 +1048,7 @@ lookup_exits() {
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$letter" "$ip" "$seen" "$def" "$sig" \
       "${org:--}" "${cc:--}" "${city:--}" "${host:--}" "$kind" >> "$WORK/exits_info.tsv"
   done < "$WORK/exits.tsv"
+  step_end "$(ui_lines "$WORK/exits_info.tsv") 个出口"
 }
 
 # ---------- 分析 ----------
@@ -1113,7 +1273,6 @@ report_text() {
     R=$'\033[0m'; B=$'\033[1m'; DIM=$'\033[2m'; GRN=$'\033[32m'
     YEL=$'\033[33m'; MAG=$'\033[35m'; CYN=$'\033[36m'; RED=$'\033[31m'
   fi
-  cat_labels > "$WORK/cats.txt"
   cat > "$WORK/report.awk" <<'AWK'
 BEGIN { FS = "\t" }
 
@@ -1122,6 +1281,17 @@ function pad(s, w, t, hb, cells) {
   t = s; hb = gsub(/[^\001-\177]/, "", t)
   cells = length(s) - hb + int(hb * 2 / 3)
   return s (w > cells ? sprintf("%" (w - cells) "s", "") : "")
+}
+function dwidth(s, t, hb) {
+  t = s; hb = gsub(/[^\001-\177]/, "", t)
+  return length(s) - hb + int(hb * 2 / 3)
+}
+# 分区标题：── 标题（说明）─────
+function sec(title, note, n, i, rule) {
+  n = 62 - dwidth(title) - (note == "" ? 0 : dwidth(note) + 4)
+  rule = ""
+  for (i = 1; i <= n; i++) rule = rule "─"
+  print DIM "── " R B title R DIM (note == "" ? "" : "（" note "）") " " rule R
 }
 function lc(l, s) {
   if (l == "A") return GRN s R
@@ -1223,7 +1393,7 @@ END {
   print ""
 
   # 出口
-  print B "出口" R
+  sec("出口")
   for (j = 1; j <= nx; j++) {
     line = "  " lc(XL[j], B XL[j] (XDEF[j] ? " 默认" : "     ") R) "  " pad(XI[j], 16) "  " XORG[j]
     if (XCC[j] != "-") line = line "  " XCC[j]
@@ -1240,7 +1410,7 @@ END {
   print ""
 
   # 分类概览
-  print B "分类概览" R DIM "（目标数）" R
+  sec("分类概览", "目标数")
   w = (nx + 1) * 4
   PH = (ENVV["proxy"] != "-") ? "节点 DNS" : "系统 DNS"
   print "  " pad("", 10) pad(" " PH, w) (HASE ? "   " pad(" 加密 DNS", w) : "")
@@ -1270,7 +1440,8 @@ END {
 
   # 明文 DNS 触发测试
   if (ENVV["trigger"] == "no-dig") {
-    print B "明文 DNS 触发测试" R "  " DIM "没有 dig，已跳过（Debian: apt install -y dnsutils）" R
+    sec("明文 DNS 触发测试")
+    print "  " DIM "没有 dig，已跳过（Debian: apt install -y dnsutils）" R
     print ""
   } else if (ntr > 0) {
     tested = 0; fired = 0; same = ""; nsame = 0; before = ""; nbefore = 0
@@ -1281,7 +1452,7 @@ END {
       else if (GB[i] == XI[1]) { nsame++; same = same (same == "" ? "" : " ") GN[i] }
       else { nbefore++; before = before (before == "" ? "" : " ") GN[i] "(" letter_of(GB[i]) ")" }
     }
-    print B "明文 DNS 触发测试" R DIM "（外地节点 IP，明文查询前后的真实出口）" R
+    sec("明文 DNS 触发测试", "外地节点 IP，明文查询前后的真实出口")
     if (tested == 0) print "  " DIM "抽样的域名都拿不到回显" R
     for (i = 1; i <= ntr; i++) {
       if (GB[i] == "-" || GB[i] == GA[i]) continue
@@ -1297,7 +1468,7 @@ END {
   if (!BRIEF) {
     head = "  " pad("目标", 36) pad(PH, 21) pad("轮次", 6)
     if (HASE) head = head pad("加密", 6)
-    print B "明细" R
+    sec("明细")
     print DIM head "证据" R
     for (c = 1; c <= nc; c++) {
       k = CO[c]
@@ -1321,7 +1492,7 @@ END {
 
   # 其他检查
   has_other = nsn > 0 || nq > 0 || ("route_defaults" in ENVV) || ("ipv6" in ENVV) || (ENVV["tracer"] == "none" && ENVV["use_route"] == 1)
-  if (has_other) print B "其他检查" R
+  if (has_other) sec("其他检查")
   if (nsn > 0) {
     changed = ""; nc2 = 0
     for (i = 1; i <= nsn; i++) if (SR[i] != ENVV["sniff_base"]) { nc2++; changed = changed " " SN[i] "=" SR[i] }
@@ -1354,7 +1525,7 @@ END {
   if (has_other) print ""
 
   if (VERBOSE) {
-    print B "每轮明细" R DIM "（E=加密 DNS，P=系统 DNS，C=校准）" R
+    sec("每轮明细", "E=加密 DNS，P=系统 DNS，E0=校准")
     for (i = 1; i <= ndt; i++) {
       split(DL[i], d, "\t")
       print "  " d[2] d[5] " " pad(d[4], 34) pad(d[6], 17) lc(d[7], d[7]) " " pad(d[8], 16) " " pad(d[9] (d[10] == "-" ? "" : "/" d[10]), 20) DIM d[11] R
@@ -1381,6 +1552,153 @@ AWK
     -f "$WORK/report.awk" \
     "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" \
     "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/detail.tsv" || die "生成报告时出错"
+}
+
+# 方便分享的报告：summary 是几行纯文本，markdown 是完整表格。默认打码 IP，不带主机名、反解和路由
+report_share() {
+  cat > "$WORK/share.awk" <<'AWK'
+BEGIN { FS = "\t" }
+function mask(ip, a) {
+  if (!MASK) return ip
+  split(ip, a, ".")
+  return a[1] "." a[2] ".*.*"
+}
+function mname(m) {
+  if (m == "cloudflare") return "Cloudflare"
+  if (m == "akamai") return "Akamai"
+  if (m == "fastly") return "Fastly"
+  if (m == "cloudfront") return "CloudFront"
+  if (m == "google") return "Google"
+  if (m == "meta") return "Meta"
+  if (m == "page") return "页面"
+  return m
+}
+function evid(e, m) {
+  if (e == "direct") return "直接（" mname(m) "）"
+  if (e == "inferred") return "推断"
+  if (e == "weak") return "弱推断"
+  if (e == "ambiguous") return "不确定"
+  if (e == "dns") return "解析失败"
+  if (e == "noconn") return "连不上"
+  return "未知"
+}
+function asn(s, a) { split(s, a, " "); return a[1] }
+function kind(k) {
+  if (k == "dns") return "DNS 触发"
+  if (k == "static") return "名单内"
+  if (k == "mixed") return "解析不同"
+  return ""
+}
+FILENAME == F_CATS { split($0, a, " "); if (!(a[1] in CL)) { nc++; CO[nc] = a[1]; CL[a[1]] = a[2] } next }
+FILENAME == F_ENV { ENVV[$1] = $2; next }
+FILENAME == F_EXITS {
+  nx++; XL[nx] = $1; XI[nx] = $2; XDEF[nx] = $4; XORG[nx] = $6; XCC[nx] = $7; XKIND[nx] = $10
+  next
+}
+FILENAME == F_TARGETS {
+  nt++; TC[nt] = $1; TN[nt] = $2; PL[nt] = $3; PE[nt] = $5; PM[nt] = $6; PA[nt] = $7; PT[nt] = $8
+  EL[nt] = $10; KC[nt] = $14
+  if (!($1 in CL)) { nc++; CO[nc] = $1; CL[$1] = $1 }
+  CCOUNT[$1]++; MP[$1, $3]++
+  if ($5 == "direct") ndirect++
+  else if ($5 == "inferred" || $5 == "weak") ninfer++
+  if ($14 == "dns") ndns++
+  if ($14 == "static") nstatic++
+  if ($3 == "?") nunk++
+  if ($10 != "-") HASE = 1
+  next
+}
+FILENAME == F_TRIGGER { if ($4 != "-") { tested++; if ($4 != $5) fired++ } next }
+function exit_line(j, s) {
+  s = XL[j] (XDEF[j] ? " 默认" : "") "  " mask(XI[j]) "  " XORG[j]
+  if (XCC[j] != "-") s = s "  " XCC[j]
+  if (XKIND[j] == "hosting") s = s "  标记为机房"
+  return s
+}
+function cat_line(k, j, v, s) {
+  s = ""
+  for (j = 1; j <= nx; j++) { v = MP[k, XL[j]] + 0; if (v) s = s (s == "" ? "" : " · ") XL[j] " " v }
+  v = MP[k, "?"] + 0
+  if (v) s = s (s == "" ? "" : " · ") "未知 " v
+  return s
+}
+END {
+  nother = 0
+  for (j = 2; j <= nx; j++) if (asn(XORG[j]) != asn(XORG[1])) nother++
+  if (nx >= 2) verdict = "有分流，" nx " 个出口" (nother > 0 ? "，其中 " nother " 个不是默认运营商" : "，都属于默认运营商")
+  else verdict = "未发现分流"
+  date = substr(ENVV["time"], 1, 10)
+  region = (ENVV["region"] == "none" ? "" : " · 地区 " ENVV["region"])
+  if (ENVV["proxy"] != "-") region = region " · 经代理"
+  trig = ""
+  if (tested > 0) trig = (fired > 0 ? "是" : "未发现") "（触发 " fired + 0 " / 可测 " tested "）"
+
+  if (MODE == "summary") {
+    print "splitcheck 分流检测 · " date region " · " nt " 个目标"
+    print "结论：" verdict
+    for (j = 1; j <= nx; j++) print exit_line(j)
+    for (c = 1; c <= nc; c++) if (CO[c] in CCOUNT) print CL[CO[c]] "：" cat_line(CO[c])
+    if (trig != "") print "明文 DNS 触发：" trig
+    print "证据：直接 " ndirect + 0 " · 推断 " ninfer + 0 " · 未确认 " nunk + 0
+    print "https://github.com/YePiXpert/splitcheck"
+    exit
+  }
+
+  print "# 分流检测报告"
+  print ""
+  print "- 时间：" date
+  if (ENVV["region"] != "none") print "- 地区：" ENVV["region"]
+  print "- 目标：" nt " 个"
+  print "- **结论：" verdict "**"
+  if (trig != "") print "- 明文 DNS 触发：" trig
+  if (ndns > 0) print "- " ndns " 个目标由明文 DNS 触发，" nstatic + 0 " 个目标在分流名单内"
+  print ""
+  print "## 出口"
+  print ""
+  print "| 出口 | IP | 运营商 | 国家 |"
+  print "|---|---|---|---|"
+  for (j = 1; j <= nx; j++) print "| " XL[j] (XDEF[j] ? "（默认）" : "") " | " mask(XI[j]) " | " XORG[j] " | " XCC[j] " |"
+  print ""
+  print "## 分类概览"
+  print ""
+  head = "| 分类 |"; sep = "|---|"
+  for (j = 1; j <= nx; j++) { head = head " " XL[j] " |"; sep = sep "---:|" }
+  print head " 未知 |"
+  print sep "---:|"
+  for (c = 1; c <= nc; c++) {
+    k = CO[c]
+    if (!(k in CCOUNT)) continue
+    line = "| " CL[k] " |"
+    for (j = 1; j <= nx; j++) line = line " " MP[k, XL[j]] + 0 " |"
+    print line " " MP[k, "?"] + 0 " |"
+  }
+  print ""
+  print "## 明细"
+  for (c = 1; c <= nc; c++) {
+    k = CO[c]
+    if (!(k in CCOUNT)) continue
+    print ""
+    print "### " CL[k]
+    print ""
+    print "| 目标 | 出口 |" (HASE ? " 加密 DNS |" : "") " 证据 | 方式 |"
+    print "|---|---|" (HASE ? "---|" : "") "---|---|"
+    for (t = 1; t <= nt; t++) {
+      if (TC[t] != k) continue
+      print "| " TN[t] " | " PL[t] (PA[t] + 0 < PT[t] + 0 ? "（" PA[t] "/" PT[t] " 轮）" : "") " |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " kind(KC[t]) " |"
+    }
+  }
+  print ""
+  print "直接：目标或同一 IP 上的 CDN 回显的访问者 IP。推断：路由和已确认出口的线路相同。"
+  print "DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流。名单内：加密 DNS 下也走分流。"
+  print ""
+  print "由 [splitcheck](https://github.com/YePiXpert/splitcheck) 生成"
+}
+AWK
+  awk -v MODE="$1" -v MASK="$MASK" \
+    -v F_CATS="$WORK/cats.txt" -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits_info.tsv" \
+    -v F_TARGETS="$WORK/targets.tsv" -v F_TRIGGER="$WORK/trigger.tsv" \
+    -f "$WORK/share.awk" \
+    "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" || die "生成分享报告时出错"
 }
 
 report_json() {
@@ -1434,21 +1752,35 @@ AWK
 main() {
   parse_args "$@"
   check_deps
+  ui_setup
+  if (( $# == 0 && STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
+    show_menu
+  fi
   WORK=$(mktemp -d "${TMPDIR:-/tmp}/splitcheck.XXXXXX") || die "建不了临时目录"
   trap cleanup EXIT
   trap 'exit 130' INT TERM
   mkdir -p "$WORK/fp" "$WORK/path"
-  touch "$WORK/rows.tsv" "$WORK/page_names" "$WORK/env.tsv" "$WORK/trigger.tsv"
+  touch "$WORK/rows.tsv" "$WORK/page_names" "$WORK/env.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv"
+  cat_labels > "$WORK/cats.txt"
+  ui_title
 
   # 到系统 DNS 那一轮之前，所有解析都走 DoH，请求都钉到 IP，不发任何明文查询
-  progress "确认出口"
+  step_begin "确认出口"
   find_baseline
   [[ -n $PROXY ]] || IPINFO_IP=$(doh ipinfo.io | head -1)
   detect_region
+  step_end "$BASE_IP$([[ $REGION == none ]] || printf ' · 地区 %s' "$REGION")"
+  step_begin "准备探测"
   load_targets
-  progress "选择路由探测方式"
   detect_tracer
-  progress "校准出口"
+  local count est eta route=$TRACER
+  count=$(ui_lines "$WORK/targets.txt")
+  est=$(( count * (ROUNDS + USE_DNS_TEST) * 37 / 100 + 15 ))
+  eta="$est 秒"
+  (( est >= 90 )) && eta="$(( (est + 30) / 60 )) 分钟"
+  [[ $route != none ]] || route=无
+  step_end "$count 个目标 · 路由 $route · 预计约 $eta"
+  (( USE_ROUTE )) && [[ $TRACER == none ]] && ui_warn "没有路由工具，不回显的目标无法判断（Debian: apt install -y mtr-tiny）"
   run_calibration
   if (( USE_DNS_TEST )); then
     run_pass E 1 "加密 DNS"
@@ -1456,18 +1788,35 @@ main() {
   fi
   run_pass P "$ROUNDS" "系统 DNS"
   run_sniff
-  progress "收集环境信息"
+  step_begin "收集环境信息"
   dns_query_exits
   env_info
   analyze
+  step_end "完成"
   lookup_exits
-  progress_done
+  ui_finish
   if (( JSON )); then
     report_json
+  elif (( MARKDOWN )); then
+    report_share markdown
   else
     report_text
+    printf '\n── 分享摘要（%s，可直接复制）──\n\n' "$( (( MASK )) && echo 'IP 已打码' || echo '含完整 IP' )"
+    report_share summary
+    printf '\n'
+    if (( STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
+      local c=''
+      printf '输出完整的 Markdown 报告，方便贴到论坛？[y/N]: ' >&2
+      IFS= read -r c </dev/tty || c=''
+      case $c in
+        y|Y) printf '\n'; report_share markdown ;;
+      esac
+    else
+      printf '要完整的 Markdown 报告，运行时加 -m，例如 -m > report.md\n'
+    fi
   fi
 }
 
 # 脚本可能经 bash -s 从 stdin 读入，子命令不能碰 stdin
+[[ -t 0 ]] && STDIN_TTY=1
 main "$@" </dev/null
