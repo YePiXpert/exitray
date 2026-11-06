@@ -24,7 +24,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 
 ROUNDS=2
@@ -521,6 +521,7 @@ is_public_ipv4() {
     169) [[ $b != 254 ]] || return 1 ;;
     172) (( b < 16 || b > 31 )) || return 1 ;;
     192) [[ $b != 168 ]] || return 1 ;;
+    198) (( b != 18 && b != 19 )) || return 1 ;;
     100) (( b < 64 || b > 127 )) || return 1 ;;
   esac
   (( a < 224 ))
@@ -832,6 +833,17 @@ probe_target() {
       emit T "$pass" "$group" "$name" "$round" - - dns - - -
       return 0
     fi
+    # 解析成 0.0.0.0、内网这类地址，是 DNS 在屏蔽这个域名
+    local -a usable=()
+    local a
+    for a in "${ips[@]}"; do
+      is_public_ipv4 "$a" && usable+=("$a")
+    done
+    if (( ${#usable[@]} == 0 )); then
+      emit T "$pass" "$group" "$name" "$round" "${ips[0]}" - dnsblock - - -
+      return 0
+    fi
+    ips=("${usable[@]}")
     ip=${ips[(round - 1) % ${#ips[@]}]}
     # 经代理时先让节点解析一次，节点若用明文 DNS 也能触发上游名单
     [[ -z $PROXY ]] || HTTP_TIMEOUT=6 http -o /dev/null -I "https://$name/" >/dev/null
@@ -959,6 +971,9 @@ dns_query_exits() {
   b=$(dig +short +time=2 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net 2>/dev/null | head -1)
   c=$(dig +short +time=2 +tries=1 TXT o-o.myaddr.l.google.com @8.8.8.8 2>/dev/null | grep -oE 'edns0-client-subnet [0-9./]+' | awk '{ print $2 }' | head -1)
   printf 'Cloudflare\t%s\nAkamai\t%s\nGoogle\t%s\n' "${a:--}" "${b:--}" "${c:--}" > "$WORK/dnsq.tsv"
+  # 192.0.2.53 是保留地址，不存在 DNS 服务。能收到应答，说明 53 端口被中途拦截了
+  a=$(dig +short +time=2 +tries=1 example.com A @192.0.2.53 2>/dev/null | grep -E '^[0-9.]+$' | head -1)
+  printf 'dns_hijack\t%s\n' "$([[ -n $a ]] && echo 1 || echo 0)" >> "$WORK/env.tsv"
 }
 
 env_info() {
@@ -1061,7 +1076,8 @@ function is_private(ip, a) {
   split(ip, a, ".")
   a[1] += 0; a[2] += 0
   return a[1] == 10 || (a[1] == 172 && a[2] >= 16 && a[2] <= 31) || (a[1] == 192 && a[2] == 168) ||
-         (a[1] == 100 && a[2] >= 64 && a[2] <= 127) || (a[1] == 169 && a[2] == 254)
+         (a[1] == 100 && a[2] >= 64 && a[2] <= 127) || (a[1] == 169 && a[2] == 254) ||
+         (a[1] == 198 && (a[2] == 18 || a[2] == 19))
 }
 
 # 比较两条路径，返回相同位置上相同的实际跳数；CONFLICT 是第一个不同的位置，0 表示没有不同。
@@ -1134,7 +1150,8 @@ function summarize(key, p, j, e, c, best, top) {
     }
     return
   }
-  if (DNSFAIL[key, p] + 0 == S_T) S_E = "dns"
+  if (BLOCKED[key, p] + 0 > 0 && BLOCKED[key, p] + DNSFAIL[key, p] == S_T) S_E = "dnsblock"
+  else if (DNSFAIL[key, p] + 0 == S_T) S_E = "dns"
   else if ((key, p) in AMB) { S_E = "ambiguous"; S_M = AMB[key, p] }
   else if (CODE[key] == "000") S_E = "noconn"
   else S_E = "unknown"
@@ -1189,7 +1206,7 @@ END {
 
   # 没有回显的行用路由推断
   for (i = 1; i <= n; i++) {
-    if (EX[i] != "-" || MT[i] == "dns") continue
+    if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock") continue
     infer(PT[i])
     EV[i] = INF_E; CAND[i] = INF_CAND
     if (INF_X != "-") EX[i] = INF_X
@@ -1205,6 +1222,7 @@ END {
     if (IP[i] != "-" && !((key, IP[i]) in IPSEEN)) { IPSEEN[key, IP[i]] = 1; IPC[key]++ }
     if (HC[i] != "-" && !(key in CODE)) CODE[key] = HC[i]
     if (MT[i] == "dns") DNSFAIL[key, p]++
+    if (MT[i] == "dnsblock") BLOCKED[key, p]++
     if (EX[i] != "-") {
       CNT[key, p, EX[i]]++
       if (EV[i] == "direct") { if (!((key, p, EX[i]) in DIR)) DIR[key, p, EX[i]] = MT[i] }
@@ -1219,7 +1237,9 @@ END {
     pl = S_L; px = S_X; pe = S_E; pm = S_M; pa = S_A; pt = S_T; po = S_O
     summarize(key, "E")
     el = S_L; ex = S_X; ee = S_E; em = S_M
-    if (px == "-") cls = "unknown"
+    # 系统 DNS 解析成不可用的地址，或查不到而 DoH 查得到，都算 DNS 屏蔽
+    if (pe == "dnsblock" || (pe == "dns" && ex != "-")) { cls = "dnsblock"; pl = "X"; pe = "dnsblock" }
+    else if (px == "-") cls = "unknown"
     else if (el == "-") cls = (px == DEF ? "none" : "split")
     else if (ex == "-") cls = (px == DEF ? "none" : "split")
     else if (ex == DEF && px == DEF) cls = "none"
@@ -1297,6 +1317,7 @@ function lc(l, s) {
   if (l == "A") return GRN s R
   if (l == "B") return YEL s R
   if (l == "C") return MAG s R
+  if (l == "X") return RED s R
   if (l == "?" || l == "-") return DIM s R
   return CYN s R
 }
@@ -1315,6 +1336,7 @@ function evid(e, m) {
   if (e == "inferred") return "推断"
   if (e == "weak") return "弱推断"
   if (e == "ambiguous") return "不确定 " m
+  if (e == "dnsblock") return "系统 DNS 不给真实地址"
   if (e == "dns") return "解析失败"
   if (e == "noconn") return "连不上"
   return "未知"
@@ -1344,6 +1366,7 @@ FILENAME == F_TARGETS {
   if ($14 == "static") nstatic++
   if ($14 == "split") nsplit++
   if ($14 == "mixed") nmixed++
+  if ($14 == "dnsblock") nblock++
   if ($3 == "?") nunk++
   next
 }
@@ -1373,9 +1396,15 @@ END {
     if (nother > 0) line = line "，其中 " nother " 个不是默认运营商"
     else line = line "，都属于默认运营商"
     print B "结论" R "  " RED line R
+  } else if (nblock > 0 || ENVV["dns_hijack"] == 1) {
+    print B "结论" R "  " YEL "出口没有分流，都从 " XI[1] " 出去，但 DNS 被动了手脚" R
   } else {
     print B "结论" R "  " GRN "未发现分流，能确认的目标都从 " XI[1] " 出去" R
   }
+  if (ENVV["dns_hijack"] == 1)
+    print "      53 端口被上游劫持：发给任何解析器的明文查询都由它应答，换公共 DNS 没用，要用 DoH/DoT"
+  if (nblock > 0)
+    print "      " RED nblock " 个目标被 DNS 屏蔽" R "：系统 DNS 解析成 0.0.0.0 或查不到，加密 DNS 能拿到真实地址"
   if (nx >= 2) {
     same24 = 1
     pre = XI[1]; sub(/\.[0-9]+$/, ".", pre)
@@ -1411,12 +1440,13 @@ END {
 
   # 分类概览
   sec("分类概览", "目标数")
-  w = (nx + 1) * 4
+  w = (nx + 1) * 4 + (nblock > 0 ? 5 : 0)
   PH = (ENVV["proxy"] != "-") ? "节点 DNS" : "系统 DNS"
   print "  " pad("", 10) pad(" " PH, w) (HASE ? "   " pad(" 加密 DNS", w) : "")
   line = "  " pad("", 10)
   for (j = 1; j <= nx; j++) line = line lc(XL[j], sprintf("%4s", XL[j]))
   line = line DIM sprintf("%4s", "?") R
+  if (nblock > 0) line = line RED " 屏蔽" R
   if (HASE) {
     line = line "   "
     for (j = 1; j <= nx; j++) line = line lc(XL[j], sprintf("%4s", XL[j]))
@@ -1429,6 +1459,7 @@ END {
     line = "  " pad(CL[k], 10)
     for (j = 1; j <= nx; j++) { v = MP[k, XL[j]] + 0; line = line (v ? lc(XL[j], sprintf("%4d", v)) : DIM sprintf("%4s", ".") R) }
     v = MP[k, "?"] + 0; line = line DIM sprintf("%4s", v ? v : ".") R
+    if (nblock > 0) { v = MP[k, "X"] + 0; line = line (v ? RED sprintf("%5d", v) R : DIM sprintf("%5s", ".") R) }
     if (HASE) {
       line = line "   "
       for (j = 1; j <= nx; j++) { v = ME[k, XL[j]] + 0; line = line (v ? lc(XL[j], sprintf("%4d", v)) : DIM sprintf("%4s", ".") R) }
@@ -1476,7 +1507,7 @@ END {
       print "  " B CL[k] R
       for (t = 1; t <= nt; t++) {
         if (TC[t] != k) continue
-        v = PL[t] " " (PX[t] == "-" ? "" : PX[t])
+        v = (PL[t] == "X") ? "X 被 DNS 屏蔽" : PL[t] " " (PX[t] == "-" ? "" : PX[t])
         line = "    " pad(TN[t], 34) lc(PL[t], pad(v, 21)) pad(PX[t] == "-" ? "" : PA[t] "/" PT[t], 6)
         if (HASE) line = line lc(EL[t], pad(EL[t], 6))
         line = line evid(PE[t], PM[t])
@@ -1499,7 +1530,12 @@ END {
     if (nc2 == 0) print "  " pad("SNI 嗅探", 12) nsn " 个域名放进 SNI，出口都没变，没有按 TLS 域名分流"
     else print "  " pad("SNI 嗅探", 12) YEL nc2 "/" nsn " 个域名出口变了：" changed R
   }
-  if (nq > 0) {
+  if ("dns_hijack" in ENVV) {
+    if (ENVV["dns_hijack"] == 1) print "  " pad("DNS 劫持", 12) YEL "发给保留地址 192.0.2.53 的查询也有应答，53 端口被中途拦截" R
+    else print "  " pad("DNS 劫持", 12) "未发现"
+  }
+  # 被劫持时下面这些来源都是拦截方的，没有参考价值
+  if (nq > 0 && ENVV["dns_hijack"] != 1) {
     line = ""
     for (i = 1; i <= nq; i++) {
       if (QV[i] == "-") continue
@@ -1578,6 +1614,7 @@ function evid(e, m) {
   if (e == "inferred") return "推断"
   if (e == "weak") return "弱推断"
   if (e == "ambiguous") return "不确定"
+  if (e == "dnsblock") return "系统 DNS 不给真实地址"
   if (e == "dns") return "解析失败"
   if (e == "noconn") return "连不上"
   return "未知"
@@ -1587,6 +1624,7 @@ function kind(k) {
   if (k == "dns") return "DNS 触发"
   if (k == "static") return "名单内"
   if (k == "mixed") return "解析不同"
+  if (k == "dnsblock") return "DNS 屏蔽"
   return ""
 }
 FILENAME == F_CATS { split($0, a, " "); if (!(a[1] in CL)) { nc++; CO[nc] = a[1]; CL[a[1]] = a[2] } next }
@@ -1604,6 +1642,7 @@ FILENAME == F_TARGETS {
   else if ($5 == "inferred" || $5 == "weak") ninfer++
   if ($14 == "dns") ndns++
   if ($14 == "static") nstatic++
+  if ($14 == "dnsblock") nblock++
   if ($3 == "?") nunk++
   if ($10 != "-") HASE = 1
   next
@@ -1618,6 +1657,8 @@ function exit_line(j, s) {
 function cat_line(k, j, v, s) {
   s = ""
   for (j = 1; j <= nx; j++) { v = MP[k, XL[j]] + 0; if (v) s = s (s == "" ? "" : " · ") XL[j] " " v }
+  v = MP[k, "X"] + 0
+  if (v) s = s (s == "" ? "" : " · ") "DNS 屏蔽 " v
   v = MP[k, "?"] + 0
   if (v) s = s (s == "" ? "" : " · ") "未知 " v
   return s
@@ -1626,7 +1667,11 @@ END {
   nother = 0
   for (j = 2; j <= nx; j++) if (asn(XORG[j]) != asn(XORG[1])) nother++
   if (nx >= 2) verdict = "有分流，" nx " 个出口" (nother > 0 ? "，其中 " nother " 个不是默认运营商" : "，都属于默认运营商")
+  else if (nblock > 0 || ENVV["dns_hijack"] == 1) verdict = "出口没有分流，但 DNS 被动了手脚"
   else verdict = "未发现分流"
+  dnsnote = ""
+  if (ENVV["dns_hijack"] == 1) dnsnote = "53 端口被上游劫持"
+  if (nblock > 0) dnsnote = dnsnote (dnsnote == "" ? "" : "，") nblock " 个目标被 DNS 屏蔽"
   date = substr(ENVV["time"], 1, 10)
   region = (ENVV["region"] == "none" ? "" : " · 地区 " ENVV["region"])
   if (ENVV["proxy"] != "-") region = region " · 经代理"
@@ -1636,6 +1681,7 @@ END {
   if (MODE == "summary") {
     print "splitcheck 分流检测 · " date region " · " nt " 个目标"
     print "结论：" verdict
+    if (dnsnote != "") print "DNS：" dnsnote
     for (j = 1; j <= nx; j++) print exit_line(j)
     for (c = 1; c <= nc; c++) if (CO[c] in CCOUNT) print CL[CO[c]] "：" cat_line(CO[c])
     if (trig != "") print "明文 DNS 触发：" trig
@@ -1650,6 +1696,7 @@ END {
   if (ENVV["region"] != "none") print "- 地区：" ENVV["region"]
   print "- 目标：" nt " 个"
   print "- **结论：" verdict "**"
+  if (dnsnote != "") print "- DNS：" dnsnote
   if (trig != "") print "- 明文 DNS 触发：" trig
   if (ndns > 0) print "- " ndns " 个目标由明文 DNS 触发，" nstatic + 0 " 个目标在分流名单内"
   print ""
@@ -1663,6 +1710,7 @@ END {
   print ""
   head = "| 分类 |"; sep = "|---|"
   for (j = 1; j <= nx; j++) { head = head " " XL[j] " |"; sep = sep "---:|" }
+  if (nblock > 0) { head = head " DNS 屏蔽 |"; sep = sep "---:|" }
   print head " 未知 |"
   print sep "---:|"
   for (c = 1; c <= nc; c++) {
@@ -1670,6 +1718,7 @@ END {
     if (!(k in CCOUNT)) continue
     line = "| " CL[k] " |"
     for (j = 1; j <= nx; j++) line = line " " MP[k, XL[j]] + 0 " |"
+    if (nblock > 0) line = line " " MP[k, "X"] + 0 " |"
     print line " " MP[k, "?"] + 0 " |"
   }
   print ""
@@ -1684,7 +1733,8 @@ END {
     print "|---|---|" (HASE ? "---|" : "") "---|---|"
     for (t = 1; t <= nt; t++) {
       if (TC[t] != k) continue
-      print "| " TN[t] " | " PL[t] (PA[t] + 0 < PT[t] + 0 ? "（" PA[t] "/" PT[t] " 轮）" : "") " |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " kind(KC[t]) " |"
+      if (PL[t] == "X") print "| " TN[t] " | 屏蔽 |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " kind(KC[t]) " |"
+      else print "| " TN[t] " | " PL[t] (PA[t] + 0 < PT[t] + 0 ? "（" PA[t] "/" PT[t] " 轮）" : "") " |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " kind(KC[t]) " |"
     }
   }
   print ""
@@ -1739,7 +1789,7 @@ END {
     arr(X, nx), arr(T, nt), arr(G, ng), sn(ENVV["sniff_base"]), arr(N, nn)
   printf "\"dns_query\":{"
   for (i = 1; i <= nq; i++) printf "%s%s", (i > 1 ? "," : ""), Q[i]
-  printf "},\"ipv6\":%s}\n", sn(ENVV["ipv6"])
+  printf "},\"dns_hijack\":%s,\"ipv6\":%s}\n", (ENVV["dns_hijack"] == 1 ? "true" : "false"), sn(ENVV["ipv6"])
 }
 AWK
   touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv"
