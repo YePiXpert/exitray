@@ -101,6 +101,9 @@ apt install -y mtr-tiny dnsutils
 | DNS触发 | 用加密 DNS 解析时走默认出口，用系统 DNS 解析时走分流 |
 | 名单内 | 加密 DNS 下也走分流，解析到的 IP 已在上游名单里 |
 | DNS 屏蔽 | 系统 DNS 解析成 0.0.0.0、内网地址或查不到，加密 DNS 能拿到真实地址 |
+| fake-ip | 系统 DNS 返回 198.18.x.x，有 Clash、sing-box 这类透明代理接管了解析。这不是屏蔽，但系统 DNS 这一轮测不到真实出口，算作证据不足。要测线路本身先关掉它，要测它的分流用 `-x` 指向它的本地端口 |
+
+证据不足不等于没有分流。如果只找到一个出口，但有目标是未知、弱推断或 fake-ip，结论会写“没发现第二个出口，但 N/M 个目标证据不足，不能排除分流”。解析失败、连不上的目标没有流量可分，单独计数，不影响结论。
 
 名单内可能是静态名单，也可能是这个 IP 已经被别的明文查询写进去了。触发测试能看出上游是否按 DNS 写名单。
 
@@ -152,7 +155,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/sp
 3. **路由推断**：Telegram、多数银行这类不回显的目标，用路由匹配已校准的线路。
 4. **两种解析方式**：先全部用 DoH 解析测一轮，这时不发任何明文 DNS；再用系统 DNS 测几轮。两轮出口不同，就说明分流由 DNS 触发。
 5. **触发测试**：用 ECS 拿到本机没解析过的外地节点 IP，比较明文查询前后的真实出口。这一步不受之前运行的影响。
-6. **SNI 嗅探**：把目标域名放进 SNI 发给中立的回显服务，看出口变不变。
+6. **SNI 嗅探**：把目标域名放进 SNI 发给中立的回显服务。回显服务不看 SNI，所以出口变了，或者回来的不是它的应答，都说明上游在按 TLS 域名处理流量。没拿到回显的会重试一次，完全连不上的不下结论。
+7. **复测**：只回显过一次的非默认出口，可能只是出口池轮换或临时的线路切换。把当初看到它的那次探测原样再做两遍，同一个目标、同一个 IP。再出现就算数；看到的成了别的出口，这一次就按偶发处理，不算进结论，报告里单独提一句；复测拿不到回显的，保留并注明没能确认。
 
 ## 检查节点本身
 
@@ -168,12 +172,14 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 
 ```text
 -c, --category 列表   只测这些分类，逗号分隔：
-                      ai,meta,telegram,social,google,stream,finance,crypto,bank,shop,local
+                      ai,meta,telegram,social,google,stream,finance,crypto,bank,shop,dev,game,local
+                      写 none 则不用内置清单，只测 -a、-f 给的目标
 -r, --region 地区     本地银行和电商清单：auto（默认，按出口国家）tw jp hk us sg kr vn none
 -a, --add 分类:域名   追加目标，可重复，例如 -a shop:www.pchome.com.tw
 -f, --file 文件       从文件读目标，每行“分类 域名”
 -n, --rounds N        系统 DNS 测几轮，默认 2
 -p, --parallel N      并发数，默认 8
+-L, --low-resource    低压力模式：按 CPU 核数把并发降到 2-4，路由探测降低优先级
 -x, --proxy URL       经代理测，用来检查节点本身的分流
     --tracer 工具     指定路由工具：mtr-icmp mtr-tcp traceroute-tcp traceroute tracepath
     --no-route        不探测路由，只看回显
@@ -184,13 +190,32 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 -j, --json            输出 JSON
 -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码
     --no-mask         分享摘要和 Markdown 里显示完整 IP
+    --exit-code       用退出码表示结论，方便 cron 和监控
 -y, --yes             不显示启动菜单，直接测全部分类
     --no-color        不用颜色
 ```
 
+## 定时检查
+
+默认退出码是 0 检测完成、1 运行出错。加 `--exit-code` 后退出码就是结论：
+
+| 退出码 | JSON 的 `verdict` | 含义 |
+|---|---|---|
+| 0 | `clean` | 未发现分流，能测的目标都有证据 |
+| 1 | | 运行出错 |
+| 2 | `split`、`dns_tampered` | 有分流，或者 DNS 被动了手脚 |
+| 3 | `inconclusive` | 没发现第二个出口，但部分目标证据不足 |
+
+```bash
+bash splitcheck.sh -y -j --exit-code > result.json
+```
+
+JSON 里 `split` 只表示有没有发现第二个出口，没发现不等于没有，要看 `verdict`。`coverage` 给出直接、推断、弱推断、未知、连不上、fake-ip 和 DNS 屏蔽各有多少个目标。`unstable_exits` 是只出现过一次、复测时没有再出现的出口，它们不算进 `exits`，也不影响 `verdict`。
+
 ## 局限
 
 - 明文解析过的 IP 会在上游名单里留一段时间，两次运行建议间隔 15 分钟以上，否则加密 DNS 那一轮可能受上一次影响。
+- 复测在系统 DNS 轮之后做，离第一次看到那个出口隔了几十秒到一两分钟。上游名单的保留时间如果比这还短，真实的分流也可能被当成偶发；这种出口会列在报告里，不会悄悄消失。
 - 只测 IPv4。IPv6 只显示有没有，UDP 只看 DNS 查询这一项。
 - 回显依赖第三方页面，页面改版后对应目标会退回路由推断。
 - Facebook 对部分机房 IP 会把诊断页跳转到登录页，这时 Meta 也只能靠路由推断。
@@ -201,11 +226,21 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 运行时会访问被测网站和这些服务，它们能看到本机的出口 IP：
 
 - DNS：`dns.google`、`1.1.1.1`、`8.8.8.8` 和 Akamai 的权威 DNS
-- 查询出口信息：`ipinfo.io`、`ip-api.com`
+- 查询出口信息：`ipinfo.io`、`ip-api.com`（后者只有 HTTP 接口，也是前者限流时的备用来源）
 - 回显：`www.cloudflare.com`、`ifconfig.me`、`checkip.amazonaws.com`、`ident.me`、`ipinfo.tw`、`whatismyip.akamai.com`、`www.fastly-debug.com`、`www.expressvpn.com`、`www.youtube.com`、`www.facebook.com`
 - IPv6 检查：`api64.ipify.org`
 
-SNI 嗅探会把目标域名放进发给 `ipinfo.io` 的 TLS 握手。脚本不上传结果，也不收集数据。
+SNI 嗅探会把目标域名放进发给 `ipinfo.io` 的 TLS 握手。脚本不上传结果，也不收集数据。代理地址里的账号密码不会写进报告和 JSON。
+
+## 开发
+
+测试不联网，用假的 curl、mtr、dig 跑真实的脚本函数和完整流程。Python 只用于测试，运行脚本不需要：
+
+```bash
+python3 tests/test_regression.py
+```
+
+`TEST_AWK=mawk` 或 `TEST_AWK='busybox awk'` 可以换 awk，`TEST_BASH` 可以换 bash。CI 在 gawk、mawk、BusyBox awk、bash 4.2 和 Alpine 上各跑一遍。
 
 ## 许可证
 

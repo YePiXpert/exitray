@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# 假的 curl：不联网，按 URL 返回固定内容，把每次请求记到 $STUB_LOG。
+# 场景由 $STUB_DIR 里的文件决定，都可以不写：
+#   exit_for     每行“IP 出口”：回显服务按被钉住的 IP 报访问者 IP，default 行是默认值
+#   exit_once    一行“IP 出口”：这个 IP 头一次回显报这个出口，之后恢复正常，模拟偶发的出口
+#   doh          每行“域名 IP”：DoH 的应答，没写的域名解析成 8.8.4.4
+#   doh_far      每行“域名 IP”：带外地 ECS 查询时的应答，触发测试用
+#   silent       这些 IP 不回显，也认不出是哪家 CDN
+#   ipinfo_down  存在时 ipinfo.io 返回限流提示
+#   sni_exit     每行“域名 出口”：这个域名放进 SNI 后，回显服务看到的访问者 IP
+#   sni_moved    这些域名放进 SNI 后，应答的不是回显服务
+#   sni_dead     这些域名放进 SNI 后连不上
+for a in "$@"; do
+  [[ $a == --connect-to && ${STUB_NO_CONNECT_TO:-0} == 1 ]] && { echo "curl: option --connect-to: is unknown" >&2; exit 2; }
+done
+url='' out='' dump='' fmt='' pin='' connect='' host_header='' family='' follow=0 status=200
+while (( $# )); do
+  case $1 in
+    -V) echo "curl 8.5.0 stub"; exit 0 ;;
+    -4|-6) family=$1; shift ;;
+    -L) follow=1; shift ;;
+    -s|-k|-sk|-i|-I) shift ;;
+    --connect-timeout|--max-time|-A|--max-redirs|-x) shift 2 ;;
+    --resolve) pin=${2##*:}; shift 2 ;;
+    --connect-to) connect=$2; shift 2 ;;
+    -H) case $2 in Host:*|host:*) host_header=${2#*: } ;; esac; shift 2 ;;
+    -o) out=$2; shift 2 ;;
+    -D) dump=$2; shift 2 ;;
+    -w) fmt=$2; shift 2 ;;
+    *) url=$1; shift ;;
+  esac
+done
+printf '%s\tpin=%s\tconnect=%s\tfollow=%s\thost=%s\n' "$url" "$pin" "$connect" "$follow" "$host_header" >> "${STUB_LOG:-/dev/null}"
+[[ $family == -6 ]] && exit 7
+
+listed() { grep -qxF "$2" "$STUB_DIR/$1" 2>/dev/null; }
+lookup() { awk -v k="$2" '$1 == k { print $2; exit }' "$STUB_DIR/$1" 2>/dev/null; }
+exit_of() {
+  local r
+  r=$(lookup exit_once "$1")
+  # mv 是原子的，并发的请求里只有一个能用掉这一次
+  if [[ -n $r ]] && mv "$STUB_DIR/exit_once" "$STUB_DIR/exit_once.used" 2>/dev/null; then
+    printf '%s' "$r"
+    return
+  fi
+  r=$(lookup exit_for "$1")
+  [[ -n $r ]] || r=$(lookup exit_for default)
+  printf '%s' "${r:-9.9.9.9}"
+}
+body() {
+  if [[ -n $out ]]; then printf '%s' "$1" > "$out"; else printf '%s' "$1"; fi
+}
+# 真的 curl 把 -w 的内容写在最后
+finish() {
+  [[ -z $fmt ]] || printf '%s' "$status"
+  exit "${1:-0}"
+}
+
+host=${url#*://}
+host=${host%%/*}
+
+# SNI 嗅探测试：请求发给回显服务的 IP，SNI 却是别的域名
+if [[ $host_header == ipinfo.io && $host != ipinfo.io ]]; then
+  if listed sni_dead "$host"; then status=000; finish 7; fi
+  if listed sni_moved "$host"; then status=404; body '<html>not the echo service</html>'; finish; fi
+  alt=$(lookup sni_exit "$host")
+  body "${alt:-$(exit_of "$pin")}"
+  finish
+fi
+
+case $url in
+  https://dns.google/resolve*)
+    name=${url#*name=}
+    name=${name%%&*}
+    answer=$(lookup doh "$name")
+    case $url in
+      *edns_client_subnet=126.*) far=$(lookup doh_far "$name"); answer=${far:-$answer} ;;
+    esac
+    body "$(printf '{"Status":0,"Answer":[{"name":"%s","type":1,"TTL":60,"data":"%s"}]}' "$name" "${answer:-8.8.4.4}")"
+    ;;
+  https://1.1.1.1/cdn-cgi/trace)
+    body "$(printf 'fl=1\nip=%s\nts=1' "$(exit_of 1.1.1.1)")"
+    ;;
+  https://ipinfo.io/*)
+    if [[ -e $STUB_DIR/ipinfo_down ]]; then
+      status=429
+      body 'Rate limit exceeded. Subscribe to a paid plan to increase your usage limits'
+    else
+      case $url in
+        */country) body 'TW' ;;
+        */json) body '{"ip":"x","hostname":"host.example","city":"Taipei","country":"TW","org":"AS64500 Example Broadband"}' ;;
+        *) body "$(exit_of "${pin:-default}")" ;;
+      esac
+    fi
+    ;;
+  http://ip-api.com/json/*)
+    body '{"countryCode":"TW","city":"Taipei","as":"AS64501 Fallback Telecom","hosting":true,"mobile":false,"proxy":false}'
+    ;;
+  http://*)
+    # 认 CDN 的指纹请求。这里所有 IP 都装成 Cloudflare，silent 里的除外
+    if listed silent "$host"; then
+      status=400
+      [[ -z $dump ]] || printf 'HTTP/1.1 400 Bad Request\r\nServer: nginx\r\n\r\n' > "$dump"
+      body 'bad request'
+    else
+      status=403
+      [[ -z $dump ]] || printf 'HTTP/1.1 403 Forbidden\r\nServer: cloudflare\r\nCF-RAY: 1\r\n\r\n' > "$dump"
+      body 'forbidden'
+    fi
+    ;;
+  */cdn-cgi/trace)
+    if listed silent "$pin"; then status=404; finish 22; fi
+    body "$(printf 'fl=1\nip=%s\nts=1' "$(exit_of "$pin")")"
+    ;;
+  https://*/)
+    # 不回显的目标首页
+    body 'hello'
+    ;;
+  *)
+    body "$(exit_of "${pin:-default}")"
+    ;;
+esac
+finish

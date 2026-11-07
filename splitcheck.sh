@@ -24,11 +24,15 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
 ROUNDS=2
 PARALLEL=8
+PARALLEL_SET=0
+LOW_RESOURCE=0
+EXIT_CODE=0
 MAXHOPS=10
 REGION=auto
 CATS=""
@@ -53,9 +57,12 @@ FALLBACK=""
 BASE_IP=""
 EXIT_NET=""
 IPINFO_IP=""
+IPAPI_IP=""
 RUNNING=0
 LIMIT=""
+RESOLVE_LIMIT=""
 HAS_WAIT_N=0
+HAS_CONNECT_TO=0
 START_TS=$(date +%s)
 
 # 这些都走外地节点 IP，用来做明文 DNS 触发测试：日本、德国、加拿大、巴西
@@ -68,12 +75,14 @@ usage() {
 看每个目标实际从哪个 IP 出去，判断 VPS 或节点有没有分流、是怎么分的流。
 
   -c, --category 列表   只测这些分类，逗号分隔：
-                        ai,meta,telegram,social,google,stream,finance,crypto,bank,shop,local
+                        ai,meta,telegram,social,google,stream,finance,crypto,bank,shop,dev,game,local
+                        写 none 则不用内置清单，只测 -a、-f 给的目标
   -r, --region 地区     本地银行和电商清单：auto（默认，按出口国家）tw jp hk us sg kr vn none
   -a, --add 分类:域名   追加目标，可重复，例如 -a shop:www.pchome.com.tw
   -f, --file 文件       从文件读目标，每行“分类 域名”
   -n, --rounds N        系统 DNS 测几轮，默认 2
   -p, --parallel N      并发数，默认 8
+  -L, --low-resource    低压力模式：按 CPU 核数把并发降到 2-4，路由探测降低优先级
   -x, --proxy URL       经代理测，用来检查节点本身的分流，例如 socks5h://127.0.0.1:1080
       --tracer 工具     指定路由工具：mtr-icmp mtr-tcp traceroute-tcp traceroute tracepath
       --no-route        不探测路由，只看回显（不回显的目标显示未知）
@@ -84,10 +93,14 @@ usage() {
   -j, --json            输出 JSON
   -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
       --no-mask         分享摘要和 Markdown 里显示完整 IP
+      --exit-code       用退出码表示结论，方便 cron 和监控（见下）
   -y, --yes             不显示启动菜单，直接测全部分类
       --no-color        不用颜色
   -V, --version         显示版本
   -h, --help            显示帮助
+
+退出码：0 检测完成，1 运行出错。加 --exit-code 后，0 未发现分流，
+2 有分流或 DNS 被动了手脚，3 没发现分流但部分目标证据不足。
 
 依赖：bash 4+、curl、awk。mtr、traceroute 或 tracepath 用于探测路由，dig 用于明文 DNS
 触发测试，缺少时跳过对应检查（Debian 可装 mtr-tiny 和 dnsutils）。
@@ -176,6 +189,19 @@ shop www.ebay.com
 shop www.aliexpress.com
 shop www.temu.com
 shop www.taobao.com
+dev github.com
+dev raw.githubusercontent.com
+dev gitlab.com
+dev registry.npmjs.org
+dev pypi.org
+dev registry-1.docker.io
+dev stackoverflow.com
+game store.steampowered.com
+game steamcommunity.com
+game www.epicgames.com
+game www.playstation.com
+game www.xbox.com
+game www.nintendo.com
 @tw bank www.ctbcbank.com
 @tw bank www.cathaybk.com.tw
 @tw bank www.esunbank.com
@@ -259,6 +285,8 @@ finance 金融支付
 crypto 虚拟币
 bank 银行
 shop 电商购物
+dev 开发者
+game 游戏
 local 本地服务
 EOF
 }
@@ -284,6 +312,20 @@ die() {
   (( UI_ON )) && printf '\r\033[K' >&2
   printf 'splitcheck: %s\n' "$*" >&2
   exit 1
+}
+
+warn() {
+  (( UI_ON )) && printf '\r\033[K' >&2
+  printf 'splitcheck: %s\n' "$*" >&2
+}
+
+# 代理地址可能带账号密码，写进报告前要去掉
+proxy_label() {
+  printf '%s' "${PROXY/:\/\/*@/://}"
+}
+
+is_category() {
+  [[ " $CATEGORIES " == *" $1 "* ]]
 }
 
 # ---------- 界面：全部写到 stderr，重定向 stdout 时不受影响 ----------
@@ -385,6 +427,7 @@ show_menu() {
     4) 流媒体      流媒体、Google
     5) 自选分类    输入分类名
     6) 快速检测    全部分类，不测 DNS 触发，约 1 分钟
+    7) 低压力检测  全部分类，降低并发，适合小内存 VPS，用时更长
     0) 退出
 EOF
   while :; do
@@ -396,20 +439,18 @@ EOF
       3) CATS=finance,crypto,bank,shop; return 0 ;;
       4) CATS=stream,google; return 0 ;;
       5)
-        printf '  可选：ai meta telegram social google stream finance crypto bank shop local\n  用逗号分隔: ' >&2
+        printf '  可选：%s\n  用逗号分隔: ' "$CATEGORIES" >&2
         IFS= read -r cats </dev/tty || cats=''
         cats=${cats// /}
         for c in ${cats//,/ }; do
-          case $c in
-            ai|meta|telegram|social|google|stream|finance|crypto|bank|shop|local) ;;
-            *) printf '  没有这个分类: %s\n' "$c" >&2; cats=''; break ;;
-          esac
+          is_category "$c" || { printf '  没有这个分类: %s\n' "$c" >&2; cats=''; break; }
         done
         [[ -n $cats ]] && { CATS=$cats; return 0; }
         ;;
       6) USE_DNS_TEST=0; USE_SNIFF=0; return 0 ;;
+      7) LOW_RESOURCE=1; return 0 ;;
       0|q) exit 0 ;;
-      *) printf '  请输入 0 到 6\n' >&2 ;;
+      *) printf '  请输入 0 到 7\n' >&2 ;;
     esac
   done
 }
@@ -419,6 +460,7 @@ need_arg() {
 }
 
 parse_args() {
+  local c
   while (( $# )); do
     case $1 in
       -c|--category) need_arg "$1" $#; CATS=$2; shift 2 ;;
@@ -426,7 +468,9 @@ parse_args() {
       -a|--add)      need_arg "$1" $#; EXTRA+=("$2"); shift 2 ;;
       -f|--file)     need_arg "$1" $#; TARGET_FILE=$2; shift 2 ;;
       -n|--rounds)   need_arg "$1" $#; ROUNDS=$2; shift 2 ;;
-      -p|--parallel) need_arg "$1" $#; PARALLEL=$2; shift 2 ;;
+      -p|--parallel) need_arg "$1" $#; PARALLEL=$2; PARALLEL_SET=1; shift 2 ;;
+      -L|--low-resource) LOW_RESOURCE=1; shift ;;
+      --exit-code)   EXIT_CODE=1; shift ;;
       -x|--proxy)    need_arg "$1" $#; PROXY=$2; shift 2 ;;
       --tracer)      need_arg "$1" $#; FORCE_TRACER=$2; shift 2 ;;
       --no-route)    USE_ROUTE=0; shift ;;
@@ -447,6 +491,10 @@ parse_args() {
   [[ $ROUNDS =~ ^[1-9][0-9]*$ ]] || die "--rounds 必须是正整数"
   [[ $PARALLEL =~ ^[1-9][0-9]*$ ]] || die "--parallel 必须是正整数"
   [[ -z $TARGET_FILE || -r $TARGET_FILE ]] || die "读不了文件 $TARGET_FILE"
+  CATS=${CATS// /}
+  for c in ${CATS//,/ }; do
+    [[ $c == none ]] || is_category "$c" || die "没有这个分类: $c，可选：$CATEGORIES none"
+  done
   case $REGION in auto|tw|jp|hk|us|sg|kr|vn|none) ;; *) die "不支持的地区 $REGION" ;; esac
   case $FORCE_TRACER in ''|mtr-tcp|mtr-icmp|traceroute-tcp|traceroute|tracepath) ;; *) die "不支持的路由工具 $FORCE_TRACER" ;; esac
   # 经代理时只能看回显，节点的 DNS 行为也由节点决定
@@ -459,20 +507,49 @@ parse_args() {
 
 check_deps() {
   local c
-  for c in curl awk grep sed sort mktemp touch paste; do
+  for c in curl awk grep sed sort mktemp touch paste dd; do
     command -v "$c" >/dev/null 2>&1 || die "缺少 $c"
   done
-  command -v timeout >/dev/null 2>&1 && LIMIT="timeout 25"
+  if command -v timeout >/dev/null 2>&1; then
+    LIMIT="timeout 25"
+    # 系统解析器失灵时 getent 可能卡几十秒，这里只给它几秒
+    RESOLVE_LIMIT="timeout 8"
+  fi
   if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) )); then
     HAS_WAIT_N=1
   fi
+  # curl 7.49 起才能把所有主机都钉到一个 IP 上，加密 DNS 轮翻页面时要用
+  if curl --connect-to ::127.0.0.1: -V >/dev/null 2>&1; then
+    HAS_CONNECT_TO=1
+  fi
+}
+
+low_resource() {
+  local cores=1
+  command -v nproc >/dev/null 2>&1 && cores=$(nproc 2>/dev/null)
+  [[ $cores =~ ^[0-9]+$ ]] || cores=1
+  (( cores > 3 )) && cores=3
+  (( PARALLEL_SET )) || PARALLEL=$(( cores + 1 ))
+  command -v nice >/dev/null 2>&1 && LIMIT="nice -n 15 $LIMIT"
+  return 0
+}
+
+# 连子进程一起结束，退出后不留下继续跑的 curl 和 mtr
+stop_tree() {
+  local child children
+  children=$({ ps -eo pid=,ppid= 2>/dev/null || ps -o pid,ppid 2>/dev/null; } | awk -v p="$1" '$2 == p { print $1 }')
+  kill "$1" 2>/dev/null
+  for child in $children; do
+    stop_tree "$child"
+  done
 }
 
 cleanup() {
-  local pids
+  local pid
   (( UI_ON )) && printf '\r\033[K\033[?7h\033[?25h' >&2
-  pids=$(jobs -p 2>/dev/null)
-  [[ -n $pids ]] && kill $pids 2>/dev/null
+  for pid in $(jobs -p 2>/dev/null); do
+    stop_tree "$pid"
+  done
   [[ -n $WORK && -d $WORK ]] && rm -rf "$WORK"
   return 0
 }
@@ -561,7 +638,7 @@ sys_resolve() {
   if [[ -n $PROXY ]]; then
     doh "$1" ''
   elif command -v getent >/dev/null 2>&1; then
-    getent ahostsv4 "$1" 2>/dev/null | awk '!s[$1]++ { print $1 }'
+    $RESOLVE_LIMIT getent ahostsv4 "$1" 2>/dev/null | awk '!s[$1]++ { print $1 }'
   elif command -v dig >/dev/null 2>&1; then
     dig +short +time=2 +tries=1 "$1" A 2>/dev/null | grep -E '^[0-9.]+$'
   else
@@ -575,6 +652,16 @@ ipinfo_get() {
     HTTP_TIMEOUT=8 pinned ipinfo.io "$IPINFO_IP" "https://ipinfo.io/$1"
   else
     HTTP_TIMEOUT=8 http "https://ipinfo.io/$1"
+  fi
+}
+
+# ipinfo 限流或连不上时的备用来源，同时提供机房、移动网络、代理标记。只有 HTTP 接口
+ipapi_get() {
+  local url="http://ip-api.com/json/$1?fields=countryCode,city,as,hosting,mobile,proxy"
+  if [[ -n $IPAPI_IP ]]; then
+    HTTP_TIMEOUT=6 pinned ip-api.com "$IPAPI_IP" "$url"
+  else
+    HTTP_TIMEOUT=6 http "$url"
   fi
 }
 
@@ -738,9 +825,11 @@ echo_by_ip() {
 
 # ---------- 探测 ----------
 
+# 一行必须用一次 write 写完，并发追加时才不会和别的行串在一起。候选 IP 多的行有 4KB 以上，
+# printf 超过缓冲区会分几次写；dd 读一次、写一次，不看是哪家的实现
 emit() {
   local IFS=$'\t'
-  printf '%s\n' "$*" >> "$WORK/rows.tsv"
+  dd bs=64k 2>/dev/null >> "$WORK/rows.tsv" <<<"$*"
 }
 
 spawn() {
@@ -751,8 +840,11 @@ spawn() {
       wait -n 2>/dev/null
       RUNNING=$((RUNNING - 1))
     else
-      wait
-      RUNNING=0
+      # bash 4.2 没有 wait -n。轮询空位，不用等这一批全部跑完
+      while RUNNING=$(jobs -rp | wc -l) && (( RUNNING >= PARALLEL )); do
+        ui_paint
+        sleep 0.2
+      done
     fi
   fi
   ui_paint
@@ -774,7 +866,7 @@ exits_so_far() {
 }
 
 probe_calibration() {
-  local method=$1 host=$2 url=$3 ip=$4 ex='' path='' want=''
+  local method=$1 host=$2 url=$3 ip=$4 round=${5:-0} ex='' path='' want=''
   if [[ $ip == - ]]; then
     ex=$(http "$url" | head -c 400000 | extract "$method")
   else
@@ -788,7 +880,7 @@ probe_calibration() {
     fi
     path=$(route_of "$ip" cal)
   fi
-  emit C E cal "$host" 0 "$ip" "${ex:--}" "$method" - - "${path:--}"
+  emit C E cal "$host" "$round" "$ip" "${ex:--}" "$method" - - "${path:--}"
 }
 
 run_calibration() {
@@ -819,7 +911,7 @@ run_calibration() {
 }
 
 probe_target() {
-  local pass=$1 group=$2 name=$3 round=$4 ip path out ex='-' method='-' code='-' cands='-' tmp
+  local pass=$1 group=$2 name=$3 round=$4 ip
   local -a ips=()
   if is_ipv4 "$name"; then
     ip=$name
@@ -840,7 +932,11 @@ probe_target() {
       is_public_ipv4 "$a" && usable+=("$a")
     done
     if (( ${#usable[@]} == 0 )); then
-      emit T "$pass" "$group" "$name" "$round" "${ips[0]}" - dnsblock - - -
+      # 198.18.0.0/15 是 Clash、sing-box 这类透明代理常用的 fake-ip，不是屏蔽
+      case ${ips[0]} in
+        198.18.*|198.19.*) emit T "$pass" "$group" "$name" "$round" "${ips[0]}" - fakeip - - - ;;
+        *) emit T "$pass" "$group" "$name" "$round" "${ips[0]}" - dnsblock - - - ;;
+      esac
       return 0
     fi
     ips=("${usable[@]}")
@@ -848,6 +944,12 @@ probe_target() {
     # 经代理时先让节点解析一次，节点若用明文 DNS 也能触发上游名单
     [[ -z $PROXY ]] || HTTP_TIMEOUT=6 http -o /dev/null -I "https://$name/" >/dev/null
   fi
+  probe_ip "$pass" "$group" "$name" "$round" "$ip"
+}
+
+# 对一个定下来的 IP 取证：路由、回显，没有回显再翻页面。复测也用它，轮次写成 r1、r2
+probe_ip() {
+  local pass=$1 group=$2 name=$3 round=$4 ip=$5 path out ex='-' method='-' code='-' cands='-' tmp
   path=$(route_of "$ip" "$pass$round")
   out=$(echo_by_ip "$name" "$ip")
   if [[ -n $out ]]; then
@@ -855,9 +957,19 @@ probe_target() {
     method=${out#* }
   elif ! is_ipv4 "$name"; then
     # 没有回显就翻页面。后面几轮只翻第一轮证明有用的目标，省流量
-    if (( round == 1 )) || grep -qxF "$name" "$WORK/page_names" 2>/dev/null; then
+    if [[ $round == 1 ]] || grep -qxF "$name" "$WORK/page_names" 2>/dev/null; then
       tmp=$(mktemp "$WORK/p.XXXXXX")
-      code=$(HTTP_TIMEOUT=10 fetch_own "$name" "$ip" "https://$name/" -i -L --max-redirs 3 -o "$tmp" -w '%{http_code}')
+      # 跟随跳转时 curl 会自己去解析跳到的主机，发的是明文查询。加密 DNS 轮不能发，所以把
+      # 所有主机都钉在这个 IP 上，curl 太旧钉不了就不跟随。系统 DNS 轮本来就走系统解析，照常
+      local -a follow=(-L --max-redirs 3)
+      if [[ $pass == E ]]; then
+        if (( HAS_CONNECT_TO )); then
+          follow+=(--connect-to "::$ip:")
+        else
+          follow=()
+        fi
+      fi
+      code=$(HTTP_TIMEOUT=10 fetch_own "$name" "$ip" "https://$name/" -i ${follow[@]+"${follow[@]}"} -o "$tmp" -w '%{http_code}')
       cands=$(grep -aoE '[0-9]{1,3}(\.[0-9]{1,3}){3}' "$tmp" 2>/dev/null | sort -u | head -300 | paste -sd, -)
       rm -f "$tmp"
     fi
@@ -937,13 +1049,75 @@ run_trigger() {
   step_end "$(awk -F'\t' '$4 != "-" { t++; if ($4 != $5) f++ } END { printf "触发 %d / 可测 %d", f, t }' "$WORK/trigger.tsv")"
 }
 
-sniff_one() {
-  local sni=$1 r
-  r=$(curl -4 -sk --connect-timeout 4 --max-time 8 --resolve "$sni:443:$IPINFO_IP" -H 'Host: ipinfo.io' "https://$sni/ip" 2>/dev/null | extract plain)
-  printf '%s\t%s\n' "$sni" "${r:--}" >> "$WORK/sniff.tsv"
+# 把当初看到这个出口的那次探测原样再做两遍：同一个目标、同一个 IP
+retest_one() {
+  local kind=$1 pass=$2 group=$3 name=$4 ip=$5 try out method='' url=''
+  for try in 1 2; do
+    case $kind in
+      C)
+        read -r method url < <(awk -v h="$name" -v i="$ip" '$2 == h && $4 == i { print $1, $3; exit }' "$WORK/cal_pinned.txt")
+        [[ -z $url ]] || probe_calibration "$method" "$name" "$url" "$ip" "r$try"
+        ;;
+      X)
+        out=$(echo_by_ip "$name" "$ip")
+        if [[ -n $out ]]; then
+          emit X "$pass" "$group" "$name" "r$try" "$ip" "${out% *}" "${out#* }" - - -
+        else
+          emit X "$pass" "$group" "$name" "r$try" "$ip" - - - - -
+        fi
+        ;;
+      *) probe_ip "$pass" "$group" "$name" "r$try" "$ip" ;;
+    esac
+  done
+  echo >> "$WORK/retest.done"
 }
 
-# 把目标域名放进 SNI 发给中立回显，出口变了就是按 TLS 域名分流
+# 触发测试里的偶发读数按没变处理，免得出口已经不算数了，报告里还写着“触发”
+settle_triggers() {
+  [[ -s $WORK/unstable.tsv && -s $WORK/trigger.tsv ]] || return 0
+  awk -F'\t' -v OFS='\t' -v F_BAD="$WORK/unstable.tsv" '
+    FILENAME == F_BAD { bad[$1] = 1; next }
+    { if ($4 in bad) $4 = $5; else if ($5 in bad) $5 = $4; print }' "$WORK/unstable.tsv" "$WORK/trigger.tsv" > "$WORK/trigger.new" &&
+    mv "$WORK/trigger.new" "$WORK/trigger.tsv"
+}
+
+# 只回显过一次的出口，可能只是出口池轮换或临时的线路切换，不能直接算成分流。先复测，
+# 算不算数由 analyze 决定：再出现就算；同一个目标同一个 IP 看到的成了别的出口，就按偶发处理
+run_retest() {
+  local kind pass group name ip count
+  analyze
+  sort -u "$WORK/once.tsv" > "$WORK/retest.txt"
+  [[ -s $WORK/retest.txt ]] || return 0
+  count=$(ui_lines "$WORK/retest.txt")
+  : > "$WORK/retest.done"
+  step_begin "复测只出现一次的出口" "$count" "$WORK/retest.done"
+  while IFS=$'\t' read -r kind pass group name ip; do
+    STEP_DETAIL=$name
+    spawn retest_one "$kind" "$pass" "$group" "$name" "$ip"
+  done < "$WORK/retest.txt"
+  STEP_DETAIL=''
+  wait_all
+  analyze
+  settle_triggers
+  step_end "$count 个，$(ui_lines "$WORK/unstable.tsv") 个没有再出现"
+}
+
+sniff_one() {
+  local sni=$1 try tmp r='' code=000
+  tmp=$(mktemp "$WORK/s.XXXXXX")
+  # 没拿到回显就再试一次，偶发的超时不能当成结论
+  for try in 1 2; do
+    : > "$tmp"
+    code=$(curl -4 -sk --connect-timeout 4 --max-time 8 --resolve "$sni:443:$IPINFO_IP" -H 'Host: ipinfo.io' -o "$tmp" -w '%{http_code}' "https://$sni/ip" 2>/dev/null)
+    r=$(extract plain < "$tmp")
+    [[ -z $r ]] || break
+  done
+  rm -f "$tmp"
+  printf '%s\t%s\t%s\n' "$sni" "${r:--}" "${code:-000}" >> "$WORK/sniff.tsv"
+}
+
+# 把目标域名放进 SNI 发给中立回显。回显服务不看 SNI，所以出口变了是上游按 TLS 域名换了线路，
+# 有应答却不是回显，是连接被按 TLS 域名转去了别的服务器
 run_sniff() {
   (( USE_SNIFF )) || return 0
   [[ -n $IPINFO_IP ]] || return 0
@@ -959,7 +1133,12 @@ run_sniff() {
   done < "$WORK/sni.txt"
   STEP_DETAIL=''
   wait_all
-  step_end "$(awk -F'\t' -v b="$base" '{ n++; if ($2 != b) c++ } END { printf "%d 个域名，%d 个出口变化", n, c }' "$WORK/sniff.tsv")"
+  # 429 是回显服务自己在限流，和完全连不上的一样不算变化
+  step_end "$(awk -F'\t' -v b="$base" '
+    $2 == b { next }
+    $2 != "-" || ($3 + 0 > 0 && $3 + 0 != 429) { c++; next }
+    { f++ }
+    END { printf "%d 个域名，%d 个有变化", NR, c; if (f) printf "，%d 个没连上", f }' "$WORK/sniff.tsv")"
 }
 
 # DNS 权威看到的来源 IP，走 UDP，可以顺带对比 UDP 的出口
@@ -970,6 +1149,9 @@ dns_query_exits() {
   a=$(dig +short +time=2 +tries=1 TXT whoami.cloudflare CH @1.1.1.1 2>/dev/null | tr -d '"' | head -1)
   b=$(dig +short +time=2 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net 2>/dev/null | head -1)
   c=$(dig +short +time=2 +tries=1 TXT o-o.myaddr.l.google.com @8.8.8.8 2>/dev/null | grep -oE 'edns0-client-subnet [0-9./]+' | awk '{ print $2 }' | head -1)
+  # 超时的时候 dig +short 会把 “;; connection timed out” 这种提示写到 stdout
+  is_ipv4 "$a" || a=''
+  is_ipv4 "$b" || b=''
   printf 'Cloudflare\t%s\nAkamai\t%s\nGoogle\t%s\n' "${a:--}" "${b:--}" "${c:--}" > "$WORK/dnsq.tsv"
   # 192.0.2.53 是保留地址，不存在 DNS 服务。能收到应答，说明 53 端口被中途拦截了
   a=$(dig +short +time=2 +tries=1 example.com A @192.0.2.53 2>/dev/null | grep -E '^[0-9.]+$' | head -1)
@@ -985,7 +1167,8 @@ env_info() {
   printf 'tracer\t%s\n' "$TRACER" >> "$WORK/env.tsv"
   printf 'use_route\t%s\n' "$USE_ROUTE" >> "$WORK/env.tsv"
   printf 'region\t%s\n' "$REGION" >> "$WORK/env.tsv"
-  printf 'proxy\t%s\n' "${PROXY:--}" >> "$WORK/env.tsv"
+  v=$(proxy_label)
+  printf 'proxy\t%s\n' "${v:--}" >> "$WORK/env.tsv"
   printf 'rounds\t%s\n' "$ROUNDS" >> "$WORK/env.tsv"
   printf 'dns_test\t%s\n' "$USE_DNS_TEST" >> "$WORK/env.tsv"
   printf 'version\t%s\n' "$VERSION" >> "$WORK/env.tsv"
@@ -1008,17 +1191,22 @@ env_info() {
 }
 
 load_targets() {
-  local f="$WORK/targets.txt" e
+  local f="$WORK/targets.txt" e bad
   {
     catalog | awk -v r="@$REGION" '$1 == r { print $2, $3 }'
     catalog | awk '$1 !~ /^@/ { print $1, $2 }'
   } | awk -v want=",$CATS," 'want == ",," || index(want, "," $1 ",")' > "$f.raw"
-  [[ -z $TARGET_FILE ]] || grep -vE '^[[:space:]]*(#|$)' "$TARGET_FILE" >> "$f.raw"
+  # Windows 上编辑的文件可能带 BOM 和 CRLF
+  [[ -z $TARGET_FILE ]] || tr -d '\r' < "$TARGET_FILE" |
+    awk 'NR == 1 { sub(/^\357\273\277/, "") } !/^[ \t]*(#|$)/' >> "$f.raw"
   for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
     [[ $e == *:* ]] || die "-a 的格式是 分类:域名，收到 $e"
     printf '%s %s\n' "${e%%:*}" "${e#*:}" >> "$f.raw"
   done
-  awk 'NF >= 2 && $2 ~ /^[A-Za-z0-9._-]+$/ && !seen[$2]++ { print $1, $2 }' "$f.raw" > "$f"
+  # 域名不能以 - 开头，否则会被 getent、dig 当成选项
+  awk 'NF >= 2 && $2 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ && !seen[$2]++ { print $1, $2 }' "$f.raw" > "$f"
+  bad=$(awk 'NF < 2 || $2 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/' "$f.raw" | head -5 | paste -sd';' -)
+  [[ -z $bad ]] || warn "跳过格式不对的目标（应为“分类 域名”）：$bad"
   [[ -s $f ]] || die "没有可测的目标，检查 --category 和 --region"
 }
 
@@ -1026,40 +1214,49 @@ find_baseline() {
   BASE_IP=$(http https://1.1.1.1/cdn-cgi/trace | extract trace)
   [[ -n $BASE_IP ]] || BASE_IP=$(http https://www.cloudflare.com/cdn-cgi/trace | extract trace)
   [[ -n $BASE_IP ]] || BASE_IP=$(http https://ifconfig.me/ip | extract plain)
-  [[ -n $BASE_IP ]] || die "拿不到出口 IP，检查网络${PROXY:+或代理 $PROXY}"
+  [[ -n $BASE_IP ]] || die "拿不到出口 IP，检查网络${PROXY:+或代理 $(proxy_label)}"
   EXIT_NET="${BASE_IP%.*}.0/24"
-}
-
-detect_region() {
-  [[ $REGION == auto ]] || return 0
-  local cc
-  cc=$(ipinfo_get "$BASE_IP/country" | tr -d ' \r\n' | tr 'A-Z' 'a-z')
-  case $cc in
-    tw|jp|hk|us|sg|kr|vn) REGION=$cc ;;
-    *) REGION=none ;;
-  esac
 }
 
 json_str() {
   printf '%s' "$1" | sed -n "s/.*\"$2\": *\"\([^\"]*\)\".*/\1/p" | head -1
 }
 
+detect_region() {
+  [[ $REGION == auto ]] || return 0
+  local cc
+  # 限流时 ipinfo 返回的是一句话，不是国家代码
+  cc=$(ipinfo_get "$BASE_IP/country" | tr -d ' \r\n' | tr 'A-Z' 'a-z')
+  [[ $cc =~ ^[a-z][a-z]$ ]] || cc=$(json_str "$(ipapi_get "$BASE_IP" | tr -d '\n')" countryCode | tr 'A-Z' 'a-z')
+  case $cc in
+    tw|jp|hk|us|sg|kr|vn) REGION=$cc ;;
+    '')
+      REGION=none
+      warn "查不到出口所在国家，跳过本地银行和电商清单，可用 -r 手动指定"
+      ;;
+    *) REGION=none ;;
+  esac
+}
+
 lookup_exits() {
-  local letter ip seen def sig j org cc city host flags kind
+  local letter ip seen def sig j alt org cc city host kind
   : > "$WORK/exits_info.tsv"
   step_begin "查询出口信息" "$(ui_lines "$WORK/exits.tsv")" "$WORK/exits_info.tsv"
   while IFS=$'\t' read -r letter ip seen def sig; do
     ui_paint
     j=$(ipinfo_get "$ip/json" | tr -d '\n')
+    alt=$(ipapi_get "$ip" | tr -d '\n')
     org=$(json_str "$j" org)
+    [[ -n $org ]] || org=$(json_str "$alt" as)
     cc=$(json_str "$j" country)
+    [[ -n $cc ]] || cc=$(json_str "$alt" countryCode)
     city=$(json_str "$j" city)
+    [[ -n $city ]] || city=$(json_str "$alt" city)
     host=$(json_str "$j" hostname)
-    flags=$(HTTP_TIMEOUT=6 http "http://ip-api.com/json/$ip?fields=hosting,mobile,proxy")
     kind=-
-    [[ $flags == *'"hosting":true'* ]] && kind=hosting
-    [[ $flags == *'"mobile":true'* ]] && kind=mobile
-    [[ $flags == *'"proxy":true'* ]] && kind=proxy
+    [[ $alt == *'"hosting":true'* ]] && kind=hosting
+    [[ $alt == *'"mobile":true'* ]] && kind=mobile
+    [[ $alt == *'"proxy":true'* ]] && kind=proxy
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$letter" "$ip" "$seen" "$def" "$sig" \
       "${org:--}" "${cc:--}" "${city:--}" "${host:--}" "$kind" >> "$WORK/exits_info.tsv"
   done < "$WORK/exits.tsv"
@@ -1150,7 +1347,8 @@ function summarize(key, p, j, e, c, best, top) {
     }
     return
   }
-  if (BLOCKED[key, p] + 0 > 0 && BLOCKED[key, p] + DNSFAIL[key, p] == S_T) S_E = "dnsblock"
+  if (FAKE[key, p] + 0 > 0) S_E = "fakeip"
+  else if (BLOCKED[key, p] + 0 > 0 && BLOCKED[key, p] + DNSFAIL[key, p] == S_T) S_E = "dnsblock"
   else if (DNSFAIL[key, p] + 0 == S_T) S_E = "dns"
   else if ((key, p) in AMB) { S_E = "ambiguous"; S_M = AMB[key, p] }
   else if (CODE[key] == "000") S_E = "noconn"
@@ -1180,14 +1378,13 @@ END {
     for (j = 1; j <= m; j++) if (c[j] in known) { EX[i] = c[j]; MT[i] = "page"; break }
   }
 
-  # 校准表：所有拿到回显的路径
+  # 每个出口回显过几次
   for (i = 1; i <= n; i++) {
     EV[i] = "unknown"
     if (EX[i] == "-") continue
     EV[i] = "direct"
     SEENX[EX[i]]++
     if (KD[i] == "C" && (MT[i] == "trace" || MT[i] == "plain")) NEUTRAL[EX[i]]++
-    if (PT[i] != "-" && PT[i] != "") { nc++; CP[nc] = PT[i]; CX[nc] = EX[i] }
   }
 
   # 默认出口：中立回显里最多的那个，并列时取基线
@@ -1195,6 +1392,40 @@ END {
   for (e in SEENX) {
     v = NEUTRAL[e] + 0
     if (v > best || (v == best && e == BASE)) { best = v; DEF = e }
+  }
+
+  # 只回显过一次的出口不能直接算数：出口池轮换、临时的线路切换都会留下这样的读数。
+  # 轮次以 r 开头的行是复测，是用同一个目标、同一个 IP 再做的探测。复测看到的成了别的出口，
+  # 这一次就按偶发处理，读数改成复测看到的；还没复测过的写进 once.tsv，交给 run_retest
+  fo = OUT "/once.tsv"; fu = OUT "/unstable.tsv"
+  for (i = 1; i <= n; i++) {
+    e = EX[i]
+    if (EV[i] != "direct" || e == DEF || SEENX[e] != 1) continue
+    if (RD[i] ~ /^r/) { GONE[i] = 1; continue }
+    tried = 0; saw = ""; alt = "-"
+    for (j = 1; j <= n; j++) {
+      if (RD[j] !~ /^r/ || KD[j] != KD[i] || PS[j] != PS[i] || NM[j] != NM[i] || IP[j] != IP[i]) continue
+      tried++
+      if (EV[j] != "direct") continue
+      saw = saw (saw == "" ? "" : " ") EX[j]
+      if (EX[j] == DEF || SEENX[EX[j]] > 1) alt = EX[j]
+    }
+    if (tried == 0) print KD[i], PS[i], CT[i], NM[i], IP[i] > fo
+    else if (saw != "") {
+      print e, NM[i], IP[i], saw > fu
+      EX[i] = alt
+      if (alt == "-") EV[i] = "unknown"
+    }
+  }
+  # 复测时才冒出来、同样只有一次的出口，也不算数
+  for (i in GONE) { EX[i] = "-"; EV[i] = "unknown" }
+
+  # 校准表：所有拿到回显的路径。上面改过读数，回显次数重新数
+  split("", SEENX)
+  for (i = 1; i <= n; i++) {
+    if (EV[i] != "direct") continue
+    SEENX[EX[i]]++
+    if (PT[i] != "-" && PT[i] != "") { nc++; CP[nc] = PT[i]; CX[nc] = EX[i] }
   }
   if (!(DEF in SEENX)) SEENX[DEF] = 0
   nx = 1; ORDER[1] = DEF
@@ -1206,15 +1437,15 @@ END {
 
   # 没有回显的行用路由推断
   for (i = 1; i <= n; i++) {
-    if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock") continue
+    if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock" || MT[i] == "fakeip") continue
     infer(PT[i])
     EV[i] = INF_E; CAND[i] = INF_CAND
     if (INF_X != "-") EX[i] = INF_X
   }
 
-  # 按目标汇总
+  # 按目标汇总。复测的行只用来判断出口算不算数，不算目标的轮次
   for (i = 1; i <= n; i++) {
-    if (KD[i] != "T") continue
+    if (KD[i] != "T" || RD[i] ~ /^r/) continue
     key = CT[i] SUBSEP NM[i]
     if (!(key in SEEN)) { nt++; SEEN[key] = nt; KEYS[nt] = key; TC[nt] = CT[i]; TN[nt] = NM[i] }
     p = PS[i]
@@ -1223,6 +1454,7 @@ END {
     if (HC[i] != "-" && !(key in CODE)) CODE[key] = HC[i]
     if (MT[i] == "dns") DNSFAIL[key, p]++
     if (MT[i] == "dnsblock") BLOCKED[key, p]++
+    if (MT[i] == "fakeip") FAKE[key, p]++
     if (EX[i] != "-") {
       CNT[key, p, EX[i]]++
       if (EV[i] == "direct") { if (!((key, p, EX[i]) in DIR)) DIR[key, p, EX[i]] = MT[i] }
@@ -1239,6 +1471,7 @@ END {
     el = S_L; ex = S_X; ee = S_E; em = S_M
     # 系统 DNS 解析成不可用的地址，或查不到而 DoH 查得到，都算 DNS 屏蔽
     if (pe == "dnsblock" || (pe == "dns" && ex != "-")) { cls = "dnsblock"; pl = "X"; pe = "dnsblock" }
+    else if (pe == "fakeip") cls = "fakeip"
     else if (px == "-") cls = "unknown"
     else if (el == "-") cls = (px == DEF ? "none" : "split")
     else if (ex == "-") cls = (px == DEF ? "none" : "split")
@@ -1279,6 +1512,9 @@ END {
 }
 AWK
   touch "$WORK/targets.tsv" "$WORK/exits.tsv" "$WORK/detail.tsv"
+  # 这两个文件只在有内容时才会被 awk 写，先清空，不留上一遍分析的结果
+  : > "$WORK/once.tsv"
+  : > "$WORK/unstable.tsv"
   awk -v BASE="$BASE_IP" -v OUT="$WORK" -v F_ORDER="$WORK/targets.txt" -f "$WORK/analyze.awk" "$WORK/targets.txt" "$WORK/rows.tsv" ||
     die "分析结果时出错"
   # 分析出错不能当成“没有分流”
@@ -1336,6 +1572,7 @@ function evid(e, m) {
   if (e == "inferred") return "推断"
   if (e == "weak") return "弱推断"
   if (e == "ambiguous") return "不确定 " m
+  if (e == "fakeip") return "fake-ip，透明代理"
   if (e == "dnsblock") return "系统 DNS 不给真实地址"
   if (e == "dns") return "解析失败"
   if (e == "noconn") return "连不上"
@@ -1366,13 +1603,12 @@ FILENAME == F_TARGETS {
   if ($14 == "static") nstatic++
   if ($14 == "split") nsplit++
   if ($14 == "mixed") nmixed++
-  if ($14 == "dnsblock") nblock++
-  if ($3 == "?") nunk++
   next
 }
 FILENAME == F_TRIGGER { ntr++; GN[ntr] = $2; GI[ntr] = $3; GB[ntr] = $4; GA[ntr] = $5; next }
-FILENAME == F_SNIFF { nsn++; SN[nsn] = $1; SR[nsn] = $2; next }
+FILENAME == F_SNIFF { nsn++; SN[nsn] = $1; SR[nsn] = $2; SC[nsn] = $3; next }
 FILENAME == F_DNSQ { nq++; QN[nq] = $1; QV[nq] = $2; next }
+FILENAME == F_UNSTABLE { nun++; UE[nun] = $1; UN[nun] = $2; next }
 FILENAME == F_ENV { ENVV[$1] = $2; next }
 FILENAME == F_DETAIL { ndt++; DL[ndt] = $0; next }
 
@@ -1388,16 +1624,27 @@ END {
   print DIM line R
   print ""
 
-  # 结论
-  nother = 0
-  for (j = 2; j <= nx; j++) if (asn(XORG[j]) != asn(XORG[1])) nother++
-  if (nx >= 2) {
+  # 结论。判断在 judge 里做，这里只管怎么说
+  V = ENVV["verdict"]
+  nblock = ENVV["n_dnsblock"] + 0; nfake = ENVV["n_fakeip"] + 0; nweak = ENVV["n_weak"] + 0
+  nunk = ENVV["n_unknown"] + 0; ndead = ENVV["n_unreachable"] + 0
+  nopen = nunk + nweak + nfake
+  # 运营商查不到的出口不参与比较，不能算作“相同”或“不同”
+  nother = 0; norg = 0
+  for (j = 1; j <= nx; j++) if (XORG[j] == "-") norg++
+  if (XORG[1] != "-")
+    for (j = 2; j <= nx; j++) if (XORG[j] != "-" && asn(XORG[j]) != asn(XORG[1])) nother++
+  if (V == "split") {
     line = "有分流，发现 " nx " 个出口"
     if (nother > 0) line = line "，其中 " nother " 个不是默认运营商"
-    else line = line "，都属于默认运营商"
+    else if (norg == 0) line = line "，都属于默认运营商"
+    else line = line "，运营商信息没查全"
     print B "结论" R "  " RED line R
-  } else if (nblock > 0 || ENVV["dns_hijack"] == 1) {
+  } else if (V == "dns_tampered") {
     print B "结论" R "  " YEL "出口没有分流，都从 " XI[1] " 出去，但 DNS 被动了手脚" R
+  } else if (V == "inconclusive") {
+    # 证据不足不等于没有分流
+    print B "结论" R "  " YEL "没发现第二个出口，能确认的目标都从 " XI[1] " 出去，但 " nopen "/" nt " 个目标证据不足，不能排除分流" R
   } else {
     print B "结论" R "  " GRN "未发现分流，能确认的目标都从 " XI[1] " 出去" R
   }
@@ -1405,6 +1652,13 @@ END {
     print "      53 端口被上游劫持：发给任何解析器的明文查询都由它应答，换公共 DNS 没用，要用 DoH/DoT"
   if (nblock > 0)
     print "      " RED nblock " 个目标被 DNS 屏蔽" R "：系统 DNS 解析成 0.0.0.0 或查不到，加密 DNS 能拿到真实地址"
+  if (nfake > 0)
+    print "      " YEL nfake " 个目标的系统 DNS 返回 fake-ip（198.18.x.x）" R "：有透明代理接管了解析，系统 DNS 这一轮测不到真实出口。要测线路本身先关掉它，要测它的分流用 -x 指向它的本地端口"
+  if (nun > 0) {
+    line = ""
+    for (i = 1; i <= nun; i++) line = line (i > 1 ? "、" : "") UE[i] "（" UN[i] "）"
+    print "      " YEL nun " 个出口只出现过 1 次，复测时同一个目标、同一个 IP 看到的成了别的出口" R "，按偶发处理，没有算进结论：" line
+  }
   if (nx >= 2) {
     same24 = 1
     pre = XI[1]; sub(/\.[0-9]+$/, ".", pre)
@@ -1412,13 +1666,15 @@ END {
     if (same24) print "      " DIM "这些出口在同一个 /24，也可能是运营商的出口池轮换，不一定是分流" R
     once = 0
     for (j = 2; j <= nx; j++) if (XS[j] + 0 <= 1) once++
-    if (once > 0) print "      " DIM once " 个出口只回显过 1 次，可能是误报，看明细确认" R
+    if (once > 0) print "      " DIM once " 个出口只回显过 1 次，复测没能确认，可能是误报，看明细确认" R
   }
   if (ndns > 0) print "      " ndns " 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流"
   if (nstatic > 0) print "      " nstatic " 个目标在分流名单内：加密 DNS 下也走分流"
   if (nsplit > 0) print "      " nsplit " 个目标走了非默认出口"
   if (nmixed > 0) print "      " nmixed " 个目标系统 DNS 走默认出口、加密 DNS 反而走分流，通常是解析到的 IP 不同"
   if (nunk > 0) print "      " DIM nunk " 个目标无法确认出口" R
+  if (nweak > 0) print "      " DIM nweak " 个目标只有弱推断：路由在内网段就和校准线路分开了，可能走了没发现的出口" R
+  if (ndead > 0) print "      " DIM ndead " 个目标解析失败或连不上，不影响结论" R
   print ""
 
   # 出口
@@ -1525,10 +1781,22 @@ END {
   has_other = nsn > 0 || nq > 0 || ("route_defaults" in ENVV) || ("ipv6" in ENVV) || (ENVV["tracer"] == "none" && ENVV["use_route"] == 1)
   if (has_other) sec("其他检查")
   if (nsn > 0) {
-    changed = ""; nc2 = 0
-    for (i = 1; i <= nsn; i++) if (SR[i] != ENVV["sniff_base"]) { nc2++; changed = changed " " SN[i] "=" SR[i] }
-    if (nc2 == 0) print "  " pad("SNI 嗅探", 12) nsn " 个域名放进 SNI，出口都没变，没有按 TLS 域名分流"
-    else print "  " pad("SNI 嗅探", 12) YEL nc2 "/" nsn " 个域名出口变了：" changed R
+    # 回显服务不看 SNI，谁来问都照常应答。出口变了，是上游按 SNI 换了线路；有应答却不是回显，
+    # 是连接被按 SNI 转去了别的服务器。完全连不上的可能只是网络抖动，429 是回显服务在限流，都不下结论
+    changed = ""; nc2 = 0; moved = ""; nmv = 0; nsf = 0
+    for (i = 1; i <= nsn; i++) {
+      if (SR[i] == ENVV["sniff_base"]) continue
+      if (SR[i] != "-") { nc2++; changed = changed " " SN[i] "=" SR[i] }
+      else if (SC[i] + 0 > 0 && SC[i] + 0 != 429) { nmv++; moved = moved " " SN[i] }
+      else nsf++
+    }
+    label = pad("SNI 嗅探", 12)
+    if (nc2 > 0) { print "  " label YEL nc2 "/" nsn " 个域名出口变了：" changed R; label = pad("", 12) }
+    if (nmv > 0) { print "  " label YEL nmv "/" nsn " 个域名的连接被转去了别处，回来的不是回显服务的应答：" moved R; label = pad("", 12) }
+    if (nc2 + nmv == 0) {
+      if (nsf == nsn) print "  " label DIM nsn " 个域名都没连上，无法判断" R
+      else print "  " label (nsn - nsf) " 个域名放进 SNI，出口都没变，没有按 TLS 域名分流" (nsf > 0 ? DIM "（另有 " nsf " 个没连上）" R : "")
+    } else if (nsf > 0) print "  " label DIM "另有 " nsf " 个没连上" R
   }
   if ("dns_hijack" in ENVV) {
     if (ENVV["dns_hijack"] == 1) print "  " pad("DNS 劫持", 12) YEL "发给保留地址 192.0.2.53 的查询也有应答，53 端口被中途拦截" R
@@ -1561,7 +1829,7 @@ END {
   if (has_other) print ""
 
   if (VERBOSE) {
-    sec("每轮明细", "E=加密 DNS，P=系统 DNS，E0=校准")
+    sec("每轮明细", "E=加密 DNS，P=系统 DNS，E0=校准，r=复测")
     for (i = 1; i <= ndt; i++) {
       split(DL[i], d, "\t")
       print "  " d[2] d[5] " " pad(d[4], 34) pad(d[6], 17) lc(d[7], d[7]) " " pad(d[8], 16) " " pad(d[9] (d[10] == "-" ? "" : "/" d[10]), 20) DIM d[11] R
@@ -1579,15 +1847,15 @@ END {
   else print DIM "这里测的是上游这一层。节点上的 xray/sing-box 可能另有路由规则，要检查这一层请用 -x 经节点测。" R
 }
 AWK
-  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv"
+  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv"
   awk -v R="$R" -v B="$B" -v DIM="$DIM" -v GRN="$GRN" -v YEL="$YEL" -v MAG="$MAG" -v CYN="$CYN" -v RED="$RED" \
     -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" \
     -v F_CATS="$WORK/cats.txt" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNIFF="$WORK/sniff.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
-    -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" \
+    -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
     -f "$WORK/report.awk" \
     "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" \
-    "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/detail.tsv" || die "生成报告时出错"
+    "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/unstable.tsv" "$WORK/detail.tsv" || die "生成报告时出错"
 }
 
 # 方便分享的报告：summary 是几行纯文本，markdown 是完整表格。默认打码 IP，不带主机名、反解和路由
@@ -1614,6 +1882,7 @@ function evid(e, m) {
   if (e == "inferred") return "推断"
   if (e == "weak") return "弱推断"
   if (e == "ambiguous") return "不确定"
+  if (e == "fakeip") return "fake-ip，透明代理"
   if (e == "dnsblock") return "系统 DNS 不给真实地址"
   if (e == "dns") return "解析失败"
   if (e == "noconn") return "连不上"
@@ -1625,6 +1894,7 @@ function kind(k) {
   if (k == "static") return "名单内"
   if (k == "mixed") return "解析不同"
   if (k == "dnsblock") return "DNS 屏蔽"
+  if (k == "fakeip") return "fake-ip"
   return ""
 }
 FILENAME == F_CATS { split($0, a, " "); if (!(a[1] in CL)) { nc++; CO[nc] = a[1]; CL[a[1]] = a[2] } next }
@@ -1638,16 +1908,13 @@ FILENAME == F_TARGETS {
   EL[nt] = $10; KC[nt] = $14
   if (!($1 in CL)) { nc++; CO[nc] = $1; CL[$1] = $1 }
   CCOUNT[$1]++; MP[$1, $3]++
-  if ($5 == "direct") ndirect++
-  else if ($5 == "inferred" || $5 == "weak") ninfer++
   if ($14 == "dns") ndns++
   if ($14 == "static") nstatic++
-  if ($14 == "dnsblock") nblock++
-  if ($3 == "?") nunk++
   if ($10 != "-") HASE = 1
   next
 }
 FILENAME == F_TRIGGER { if ($4 != "-") { tested++; if ($4 != $5) fired++ } next }
+FILENAME == F_UNSTABLE { nun++; next }
 function exit_line(j, s) {
   s = XL[j] (XDEF[j] ? " 默认" : "") "  " mask(XI[j]) "  " XORG[j]
   if (XCC[j] != "-") s = s "  " XCC[j]
@@ -1664,28 +1931,40 @@ function cat_line(k, j, v, s) {
   return s
 }
 END {
-  nother = 0
-  for (j = 2; j <= nx; j++) if (asn(XORG[j]) != asn(XORG[1])) nother++
-  if (nx >= 2) verdict = "有分流，" nx " 个出口" (nother > 0 ? "，其中 " nother " 个不是默认运营商" : "，都属于默认运营商")
-  else if (nblock > 0 || ENVV["dns_hijack"] == 1) verdict = "出口没有分流，但 DNS 被动了手脚"
+  V = ENVV["verdict"]
+  nblock = ENVV["n_dnsblock"] + 0; nfake = ENVV["n_fakeip"] + 0; nweak = ENVV["n_weak"] + 0
+  nopen = ENVV["n_unknown"] + nweak + nfake
+  nother = 0; norg = 0
+  for (j = 1; j <= nx; j++) if (XORG[j] == "-") norg++
+  if (XORG[1] != "-")
+    for (j = 2; j <= nx; j++) if (XORG[j] != "-" && asn(XORG[j]) != asn(XORG[1])) nother++
+  if (V == "split") verdict = "有分流，" nx " 个出口" (nother > 0 ? "，其中 " nother " 个不是默认运营商" : (norg == 0 ? "，都属于默认运营商" : "，运营商信息没查全"))
+  else if (V == "dns_tampered") verdict = "出口没有分流，但 DNS 被动了手脚"
+  else if (V == "inconclusive") verdict = "没发现第二个出口，但 " nopen "/" nt " 个目标证据不足，不能排除分流"
   else verdict = "未发现分流"
   dnsnote = ""
   if (ENVV["dns_hijack"] == 1) dnsnote = "53 端口被上游劫持"
   if (nblock > 0) dnsnote = dnsnote (dnsnote == "" ? "" : "，") nblock " 个目标被 DNS 屏蔽"
+  if (nfake > 0) dnsnote = dnsnote (dnsnote == "" ? "" : "，") nfake " 个目标返回 fake-ip，有透明代理"
   date = substr(ENVV["time"], 1, 10)
   region = (ENVV["region"] == "none" ? "" : " · 地区 " ENVV["region"])
   if (ENVV["proxy"] != "-") region = region " · 经代理"
   trig = ""
   if (tested > 0) trig = (fired > 0 ? "是" : "未发现") "（触发 " fired + 0 " / 可测 " tested "）"
+  unote = ""
+  if (nun > 0) unote = "另有 " nun " 个出口只出现过一次，复测没有再出现，没有算进结论"
 
   if (MODE == "summary") {
     print "splitcheck 分流检测 · " date region " · " nt " 个目标"
     print "结论：" verdict
+    if (unote != "") print unote
     if (dnsnote != "") print "DNS：" dnsnote
     for (j = 1; j <= nx; j++) print exit_line(j)
     for (c = 1; c <= nc; c++) if (CO[c] in CCOUNT) print CL[CO[c]] "：" cat_line(CO[c])
     if (trig != "") print "明文 DNS 触发：" trig
-    print "证据：直接 " ndirect + 0 " · 推断 " ninfer + 0 " · 未确认 " nunk + 0
+    line = "证据：直接 " (ENVV["n_direct"] + 0) " · 推断 " (ENVV["n_inferred"] + 0)
+    if (nweak > 0) line = line " · 弱推断 " nweak
+    print line " · 未确认 " (ENVV["n_unknown"] + ENVV["n_unreachable"] + nfake)
     print "https://github.com/YePiXpert/splitcheck"
     exit
   }
@@ -1696,6 +1975,7 @@ END {
   if (ENVV["region"] != "none") print "- 地区：" ENVV["region"]
   print "- 目标：" nt " 个"
   print "- **结论：" verdict "**"
+  if (unote != "") print "- " unote
   if (dnsnote != "") print "- DNS：" dnsnote
   if (trig != "") print "- 明文 DNS 触发：" trig
   if (ndns > 0) print "- " ndns " 个目标由明文 DNS 触发，" nstatic + 0 " 个目标在分流名单内"
@@ -1746,9 +2026,10 @@ END {
 AWK
   awk -v MODE="$1" -v MASK="$MASK" \
     -v F_CATS="$WORK/cats.txt" -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits_info.tsv" \
-    -v F_TARGETS="$WORK/targets.tsv" -v F_TRIGGER="$WORK/trigger.tsv" \
+    -v F_TARGETS="$WORK/targets.tsv" -v F_TRIGGER="$WORK/trigger.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
     -f "$WORK/share.awk" \
-    "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" || die "生成分享报告时出错"
+    "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" \
+    "$WORK/unstable.tsv" || die "生成分享报告时出错"
 }
 
 report_json() {
@@ -1778,25 +2059,71 @@ FILENAME == F_TRIGGER {
   if ($4 != "-" && $4 != $5) fired = 1
   next
 }
-FILENAME == F_SNIFF { nn++; N[nn] = "{\"sni\":" s($1) ",\"exit\":" sn($2) "}"; next }
+FILENAME == F_SNIFF { nn++; N[nn] = "{\"sni\":" s($1) ",\"exit\":" sn($2) ",\"http\":" sn($3) "}"; next }
 FILENAME == F_DNSQ { nq++; Q[nq] = s($1) ":" sn($2); next }
+FILENAME == F_UNSTABLE {
+  nu++
+  m = split($4, w, " "); r = ""
+  for (k = 1; k <= m; k++) r = r (k > 1 ? "," : "") s(w[k])
+  U[nu] = "{\"ip\":" s($1) ",\"target\":" s($2) ",\"target_ip\":" sn($3) ",\"retest\":[" r "]}"
+  next
+}
 function arr(a, n, i, o) { o = "["; for (i = 1; i <= n; i++) o = o (i > 1 ? "," : "") a[i]; return o "]" }
 END {
   printf "{\"version\":%s,\"host\":%s,\"time\":%s,\"elapsed\":%d,\"proxy\":%s,\"region\":%s,\"tracer\":%s,", \
     s(ENVV["version"]), s(ENVV["host"]), s(ENVV["time"]), ENVV["elapsed"], sn(ENVV["proxy"]), s(ENVV["region"]), s(ENVV["tracer"])
-  printf "\"split\":%s,\"dns_triggered\":%s,\"default_exit\":%s,", (nx >= 2 ? "true" : "false"), (fired ? "true" : "false"), s(DEF)
-  printf "\"exits\":%s,\"targets\":%s,\"dns_trigger_test\":%s,\"sni_test\":{\"baseline\":%s,\"results\":%s},", \
-    arr(X, nx), arr(T, nt), arr(G, ng), sn(ENVV["sniff_base"]), arr(N, nn)
+  # split 只说有没有发现第二个出口。没发现不等于没有，要看 verdict 和 coverage
+  printf "\"split\":%s,\"verdict\":%s,\"dns_triggered\":%s,\"default_exit\":%s,", (nx >= 2 ? "true" : "false"), s(ENVV["verdict"]), (fired ? "true" : "false"), s(DEF)
+  printf "\"coverage\":{\"direct\":%d,\"inferred\":%d,\"weak\":%d,\"unknown\":%d,\"unreachable\":%d,\"fake_ip\":%d,\"dns_blocked\":%d},", \
+    ENVV["n_direct"], ENVV["n_inferred"], ENVV["n_weak"], ENVV["n_unknown"], ENVV["n_unreachable"], ENVV["n_fakeip"], ENVV["n_dnsblock"]
+  # unstable_exits：只出现过一次、复测时又没再出现的出口，不算进 exits
+  printf "\"exits\":%s,\"unstable_exits\":%s,\"targets\":%s,\"dns_trigger_test\":%s,\"sni_test\":{\"baseline\":%s,\"results\":%s},", \
+    arr(X, nx), arr(U, nu), arr(T, nt), arr(G, ng), sn(ENVV["sniff_base"]), arr(N, nn)
   printf "\"dns_query\":{"
   for (i = 1; i <= nq; i++) printf "%s%s", (i > 1 ? "," : ""), Q[i]
   printf "},\"dns_hijack\":%s,\"ipv6\":%s}\n", (ENVV["dns_hijack"] == 1 ? "true" : "false"), sn(ENVV["ipv6"])
 }
 AWK
-  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv"
+  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/unstable.tsv"
   awk -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNIFF="$WORK/sniff.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
+    -v F_UNSTABLE="$WORK/unstable.tsv" \
     -f "$WORK/json.awk" \
-    "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" || die "生成 JSON 时出错"
+    "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" \
+    "$WORK/unstable.tsv" || die "生成 JSON 时出错"
+}
+
+# 结论只在这里判断一次，三种报告和退出码都读它，不会各说各的
+judge() {
+  awk -F'\t' -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits.tsv" '
+    FILENAME == F_ENV { if ($1 == "dns_hijack" && $2 == 1) hijack = 1; next }
+    FILENAME == F_EXITS { nx++; next }
+    $14 == "dnsblock" { block++; next }
+    $14 == "fakeip" { fake++; next }
+    # 解析失败、连不上的目标没有流量可分，单独计数，不影响结论
+    $4 == "-" { if ($5 == "dns" || $5 == "noconn") dead++; else unknown++; next }
+    $5 == "direct" { direct++; next }
+    $5 == "weak" { weak++; next }
+    { inferred++ }
+    END {
+      if (nx >= 2) v = "split"
+      else if (block > 0 || hijack) v = "dns_tampered"
+      # 没有证据、只有弱推断、被 fake-ip 挡住的目标，都可能走了没发现的出口
+      else if (unknown + weak + fake > 0) v = "inconclusive"
+      else v = "clean"
+      printf "verdict\t%s\nn_direct\t%d\nn_inferred\t%d\nn_weak\t%d\nn_unknown\t%d\n", v, direct, inferred, weak, unknown
+      printf "n_unreachable\t%d\nn_fakeip\t%d\nn_dnsblock\t%d\n", dead, fake, block
+    }' "$WORK/env.tsv" "$WORK/exits.tsv" "$WORK/targets.tsv" > "$WORK/verdict.tsv" || die "分析结果时出错"
+  cat "$WORK/verdict.tsv" >> "$WORK/env.tsv"
+}
+
+# --exit-code 用：0 未发现分流，2 有分流或 DNS 被动了手脚，3 证据不足
+exit_status() {
+  case $(awk -F'\t' '$1 == "verdict" { v = $2 } END { print v }' "$WORK/env.tsv") in
+    clean) printf 0 ;;
+    inconclusive) printf 3 ;;
+    *) printf 2 ;;
+  esac
 }
 
 main() {
@@ -1806,9 +2133,12 @@ main() {
   if (( $# == 0 && STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
     show_menu
   fi
+  (( LOW_RESOURCE )) && low_resource
   WORK=$(mktemp -d "${TMPDIR:-/tmp}/splitcheck.XXXXXX") || die "建不了临时目录"
   trap cleanup EXIT
-  trap 'exit 130' INT TERM
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
   mkdir -p "$WORK/fp" "$WORK/path"
   touch "$WORK/rows.tsv" "$WORK/page_names" "$WORK/env.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv"
   cat_labels > "$WORK/cats.txt"
@@ -1817,7 +2147,10 @@ main() {
   # 到系统 DNS 那一轮之前，所有解析都走 DoH，请求都钉到 IP，不发任何明文查询
   step_begin "确认出口"
   find_baseline
-  [[ -n $PROXY ]] || IPINFO_IP=$(doh ipinfo.io | head -1)
+  if [[ -z $PROXY ]]; then
+    IPINFO_IP=$(doh ipinfo.io | head -1)
+    IPAPI_IP=$(doh ip-api.com | head -1)
+  fi
   detect_region
   step_end "$BASE_IP$([[ $REGION == none ]] || printf ' · 地区 %s' "$REGION")"
   step_begin "准备探测"
@@ -1825,7 +2158,7 @@ main() {
   detect_tracer
   local count est eta route=$TRACER
   count=$(ui_lines "$WORK/targets.txt")
-  est=$(( count * (ROUNDS + USE_DNS_TEST) * 37 / 100 + 15 ))
+  est=$(( count * (ROUNDS + USE_DNS_TEST) * 3 / PARALLEL + 15 ))
   eta="$est 秒"
   (( est >= 90 )) && eta="$(( (est + 30) / 60 )) 分钟"
   [[ $route != none ]] || route=无
@@ -1837,11 +2170,13 @@ main() {
     run_trigger
   fi
   run_pass P "$ROUNDS" "系统 DNS"
+  run_retest
   run_sniff
   step_begin "收集环境信息"
   dns_query_exits
   env_info
   analyze
+  judge
   step_end "完成"
   lookup_exits
   ui_finish
@@ -1865,7 +2200,12 @@ main() {
       printf '要完整的 Markdown 报告，运行时加 -m，例如 -m > report.md\n'
     fi
   fi
+  (( EXIT_CODE )) && exit "$(exit_status)"
+  return 0
 }
+
+# 测试时只加载函数
+[[ ${SPLITCHECK_SOURCE_ONLY:-0} == 1 ]] && return 0
 
 # 脚本可能经 bash -s 从 stdin 读入，子命令不能碰 stdin
 [[ -t 0 ]] && STDIN_TTY=1

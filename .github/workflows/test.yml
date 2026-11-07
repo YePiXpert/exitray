@@ -1,0 +1,41 @@
+name: tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y gawk mawk busybox
+      - run: bash -n splitcheck.sh
+      - name: gawk
+        run: TEST_AWK=gawk python3 tests/test_regression.py
+      - name: mawk
+        run: TEST_AWK=mawk python3 tests/test_regression.py
+      - name: BusyBox awk
+        run: TEST_AWK='busybox awk' python3 tests/test_regression.py
+  bash-4-2:
+    # 没有 wait -n 的旧 bash，走轮询空位那条路
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build bash 4.2
+        run: |
+          curl -fsSL https://ftp.gnu.org/gnu/bash/bash-4.2.tar.gz -o /tmp/bash.tgz
+          tar -xzf /tmp/bash.tgz -C /tmp
+          cd /tmp/bash-4.2
+          ./configure --without-bash-malloc >/dev/null
+          make -j2 >/dev/null
+      - run: TEST_BASH=/tmp/bash-4.2/bash python3 tests/test_regression.py
+  alpine:
+    # 不装 coreutils，cat、dd、ps、timeout 这些用的都是 BusyBox 的
+    runs-on: ubuntu-latest
+    container: alpine:3.22
+    steps:
+      - run: apk add --no-cache bash python3
+      - uses: actions/checkout@v4
+      - run: bash -n splitcheck.sh && python3 tests/test_regression.py
