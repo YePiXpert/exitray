@@ -3,9 +3,12 @@
 # 场景由 $STUB_DIR 里的文件决定，都可以不写：
 #   exit_for     每行“IP 出口”：回显服务按被钉住的 IP 报访问者 IP，default 行是默认值
 #   exit_once    一行“IP 出口”：这个 IP 头一次回显报这个出口，之后恢复正常，模拟偶发的出口
-#   doh          每行“域名 IP”：DoH 的应答，没写的域名解析成 8.8.4.4
+#   doh          每行“域名 IP [IP...]”：Google DoH 的应答，没写的域名解析成 8.8.4.4
+#   doh_cf       每行“域名 IP [IP...]”：Cloudflare DoH 的应答，没写的和 Google 一样
 #   doh_far      每行“域名 IP”：带外地 ECS 查询时的应答，触发测试用
 #   silent       这些 IP 不回显，也认不出是哪家 CDN
+#   dead         这些 IP 连不上
+#   flaky        每行“IP N”：这个 IP 前 N 个请求连不上，之后恢复，模拟偶发的超时
 #   ipinfo_down  存在时 ipinfo.io 返回限流提示
 #   sni_exit     每行“域名 出口”：这个域名放进 SNI 后，回显服务看到的访问者 IP
 #   sni_moved    这些域名放进 SNI 后，应答的不是回显服务
@@ -13,13 +16,14 @@
 for a in "$@"; do
   [[ $a == --connect-to && ${STUB_NO_CONNECT_TO:-0} == 1 ]] && { echo "curl: option --connect-to: is unknown" >&2; exit 2; }
 done
-url='' out='' dump='' fmt='' pin='' connect='' host_header='' family='' follow=0 status=200
+url='' out='' dump='' fmt='' pin='' connect='' host_header='' family='' follow=0 include=0 status=200
 while (( $# )); do
   case $1 in
     -V) echo "curl 8.5.0 stub"; exit 0 ;;
     -4|-6) family=$1; shift ;;
     -L) follow=1; shift ;;
-    -s|-k|-sk|-i|-I) shift ;;
+    -i) include=1; shift ;;
+    -s|-k|-sk|-I) shift ;;
     --connect-timeout|--max-time|-A|--max-redirs|-x) shift 2 ;;
     --resolve) pin=${2##*:}; shift 2 ;;
     --connect-to) connect=$2; shift 2 ;;
@@ -35,6 +39,7 @@ printf '%s\tpin=%s\tconnect=%s\tfollow=%s\thost=%s\n' "$url" "$pin" "$connect" "
 
 listed() { grep -qxF "$2" "$STUB_DIR/$1" 2>/dev/null; }
 lookup() { awk -v k="$2" '$1 == k { print $2; exit }' "$STUB_DIR/$1" 2>/dev/null; }
+lookup_all() { awk -v k="$2" '$1 == k { for (i = 2; i <= NF; i++) print $i; exit }' "$STUB_DIR/$1" 2>/dev/null; }
 exit_of() {
   local r
   r=$(lookup exit_once "$1")
@@ -48,16 +53,47 @@ exit_of() {
   printf '%s' "${r:-9.9.9.9}"
 }
 body() {
-  if [[ -n $out ]]; then printf '%s' "$1" > "$out"; else printf '%s' "$1"; fi
+  local text=$1
+  # -i 时真的 curl 把响应头也写进输出
+  (( include )) && text=$(printf 'HTTP/1.1 %s X\r\n\r\n%s' "$status" "$1")
+  if [[ -n $out ]]; then printf '%s' "$text" > "$out"; else printf '%s' "$text"; fi
 }
 # 真的 curl 把 -w 的内容写在最后
 finish() {
-  [[ -z $fmt ]] || printf '%s' "$status"
+  if [[ -n $fmt ]]; then
+    case $fmt in
+      *time_connect*) if [[ $status == 000 ]]; then printf '0.000000'; else printf '0.012000'; fi ;;
+      *) printf '%s' "$status" ;;
+    esac
+  fi
   exit "${1:-0}"
+}
+answers() { # DoH 应答，参数是域名和 IP
+  local name=$1 ip list=''
+  shift
+  for ip in "$@"; do
+    list+="${list:+,}$(printf '{"name":"%s","type":1,"TTL":60,"data":"%s"}' "$name" "$ip")"
+  done
+  body "{\"Status\":0,\"Answer\":[$list]}"
 }
 
 host=${url#*://}
 host=${host%%/*}
+
+# 这次请求实际连的 IP：钉住的、--connect-to 指定的，或者 URL 里直接写的
+target=$pin
+[[ -z $connect ]] || { target=${connect#::}; target=${target%:}; }
+[[ -n $target || ! ${host%%:*} =~ ^[0-9.]+$ ]] || target=${host%%:*}
+unreachable() {
+  [[ -n $target ]] || return 1
+  listed dead "$target" && return 0
+  local n
+  n=$(lookup flaky "$target")
+  [[ -n $n ]] || return 1
+  echo >> "$STUB_DIR/hits.$target"
+  (( $(wc -l < "$STUB_DIR/hits.$target") <= n ))
+}
+if unreachable; then status=000; finish 7; fi
 
 # SNI 嗅探测试：请求发给回显服务的 IP，SNI 却是别的域名
 if [[ $host_header == ipinfo.io && $host != ipinfo.io ]]; then
@@ -69,14 +105,16 @@ if [[ $host_header == ipinfo.io && $host != ipinfo.io ]]; then
 fi
 
 case $url in
-  https://dns.google/resolve*)
+  https://dns.google/resolve*|https://1.1.1.1/dns-query*)
     name=${url#*name=}
     name=${name%%&*}
-    answer=$(lookup doh "$name")
+    mapfile -t ips < <(lookup_all doh "$name")
     case $url in
-      *edns_client_subnet=126.*) far=$(lookup doh_far "$name"); answer=${far:-$answer} ;;
+      https://1.1.1.1/*) mapfile -t cf < <(lookup_all doh_cf "$name"); (( ${#cf[@]} )) && ips=("${cf[@]}") ;;
+      *edns_client_subnet=126.*) far=$(lookup doh_far "$name"); [[ -z $far ]] || ips=("$far") ;;
     esac
-    body "$(printf '{"Status":0,"Answer":[{"name":"%s","type":1,"TTL":60,"data":"%s"}]}' "$name" "${answer:-8.8.4.4}")"
+    (( ${#ips[@]} )) || ips=(8.8.4.4)
+    answers "$name" "${ips[@]}"
     ;;
   https://1.1.1.1/cdn-cgi/trace)
     body "$(printf 'fl=1\nip=%s\nts=1' "$(exit_of 1.1.1.1)")"

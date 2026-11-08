@@ -202,18 +202,36 @@ trace_raw {mode} 1.1.1.1
 
 class EmitTests(unittest.TestCase):
     def test_long_rows_stay_intact_under_concurrency(self):
-        # 300 个候选 IP 的行有 4.8KB，超过 stdio 的缓冲区
+        # 300 个候选 IP 的行有 4.8KB，超过 stdio 的缓冲区。写的时候 PATH 是空的：emit 不能靠
+        # dd、cat 这类外部命令，uutils 的 dd 写完会截断文件，并发时把别人的行截掉
         code = textwrap.dedent("""\
-            WORK=$(mktemp -d); touch "$WORK/rows.tsv"
+            WORK=$(mktemp -d); mkdir "$WORK/rows.d"; touch "$WORK/rows.tsv"
             big=$(printf '100.100.100.100,%.0s' {1..300})
             for w in 1 2 3 4 5 6 7 8; do
-              ( for i in {1..40}; do emit T "$w" "$i" "$big" END; done ) &
+              ( PATH=/nonexistent; for i in {1..40}; do emit T "$w" "$i" "$big" END; done ) &
             done
             wait
+            rows_merge
             awk -F'\\t' 'NF == 5 && $5 == "END"' "$WORK/rows.tsv" | wc -l
+            ls "$WORK/rows.d" | wc -l
             rm -rf "$WORK"
         """)
-        self.assertEqual(shell(code, timeout=60).stdout.strip(), '320')
+        result = shell(code, timeout=60)
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout.split(), ['320', '0'])
+
+    def test_merge_without_rows_is_a_no_op(self):
+        code = textwrap.dedent("""\
+            WORK=$(mktemp -d); mkdir "$WORK/rows.d"; printf 'x\\n' > "$WORK/rows.tsv"
+            rows_merge && cat "$WORK/rows.tsv"
+            rm -rf "$WORK"
+        """)
+        result = shell(code)
+        self.assertEqual((result.stdout, result.stderr), ('x\n', ''))
+
+    def test_pick_one_ip_per_slash_24(self):
+        out = shell("printf '1.1.1.1\\n1.1.1.2\\n2.2.2.2\\n3.3.3.3\\n4.4.4.4\\n' | pick_ips 3").stdout
+        self.assertEqual(out.split(), ['1.1.1.1', '2.2.2.2', '3.3.3.3'])
 
 
 class AnalyzeTests(unittest.TestCase):
@@ -226,6 +244,7 @@ class AnalyzeTests(unittest.TestCase):
         'clean': ('0', r'未发现分流'),
         'inconclusive': ('3', r'不能排除分流'),
         'dns_tampered': ('2', r'DNS 被动了手脚'),
+        'blocked': ('2', r'像是被按 IP 拦截'),
         'split': ('2', r'结论(：|  )有分流'),
     }
 
@@ -293,7 +312,8 @@ class AnalyzeTests(unittest.TestCase):
         data = self.json()
         self.assertIs(data['split'], False)
         self.assertEqual(data['coverage'], {'direct': 1, 'inferred': 0, 'weak': 0, 'unknown': 0,
-                                            'unreachable': 0, 'fake_ip': 0, 'dns_blocked': 0})
+                                            'unreachable': 0, 'fake_ip': 0, 'dns_blocked': 0,
+                                            'ip_blocked': 0, 'split_by_ip': 0})
 
     def test_unknown_targets_do_not_read_as_no_split(self):
         self.analyze(rows(*self.calibration(), self.direct(path='-'),
@@ -325,6 +345,101 @@ class AnalyzeTests(unittest.TestCase):
         self.assertIn('2 个目标解析失败或连不上', self.text())
         self.assertEqual(self.json()['coverage']['unreachable'], 2)
         self.assertIn('未确认 2', self.summary())
+
+    # 第 12 列是这个 IP 连不连得上
+    DEAD_E = ('T', 'E', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+    LIVE_P = ('T', 'P', 'meta', 'f.example', 1, '57.144.1.1', '8.8.8.8', 'meta', '-', '-', '10.0.0.1 1.2.3.4', 'ok')
+
+    def retests(self, row, *results):
+        return [row[:4] + (f'r{k}',) + row[5:] if r is None else row[:4] + (f'r{k}',) + r
+                for k, r in enumerate(results, 1)]
+
+    def test_partly_unreachable_target_is_a_block(self):
+        # 加密 DNS 解析到的旧网段复测两次都连不上，系统 DNS 给的新网段正常：像是按 IP 拦截
+        self.analyze(rows(*self.calibration(), self.DEAD_E, *self.retests(self.DEAD_E, None, None), self.LIVE_P),
+                     [('meta', 'f.example')])
+        self.assert_verdict('blocked')
+        data = self.json()
+        target = data['targets'][0]
+        self.assertEqual(target['reach'], 'partial')
+        self.assertEqual(target['ips'], [{'ip': '31.13.1.1', 'exit_ids': [], 'reachable': False},
+                                         {'ip': '57.144.1.1', 'exit_ids': ['A'], 'reachable': True}])
+        self.assertEqual(data['coverage']['ip_blocked'], 1)
+        text = self.text()
+        self.assertIn('1 个目标有部分 IP 连不上', text)
+        self.assertIn('部分IP不通', text)
+        self.assertRegex(text, r'31\.13\.1\.1 +.*复测两次都连不上')
+        self.assertIn('1 个目标部分 IP 连不上', self.summary())
+        self.assertIn('部分 IP 连不上 |', self.markdown())
+
+    def test_unreachable_reading_that_connects_on_retest_is_not_a_block(self):
+        # 系统 DNS 那一次超时，复测连上了：这一次按连得上处理，照常用路由推断，不记成连不上
+        dead = ('T', 'P', 'meta', 'f.example', 1, '57.144.1.1', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+        ok = ('57.144.1.1', '-', '-', '200', '-', '10.0.0.1 1.2.3.4', 'ok')
+        self.analyze(rows(*self.calibration(), dead, *self.retests(dead, None, ok)), [('meta', 'f.example')])
+        self.assert_verdict('clean')
+        data = self.json()
+        self.assertEqual(data['targets'][0]['reach'], 'ok')
+        self.assertEqual(data['targets'][0]['system_dns']['evidence'], 'inferred')
+        self.assertEqual(data['coverage']['unreachable'], 0)
+
+    def test_unreachable_reading_is_queued_for_retest(self):
+        self.analyze(rows(*self.calibration(), self.DEAD_E, self.LIVE_P), [('meta', 'f.example')])
+        self.text()
+        self.assertEqual((self.work / 'once.tsv').read_text(), 'T\tE\tmeta\tf.example\t31.13.1.1\n')
+        # 没复测过就不算数
+        self.assertEqual(self.json()['targets'][0]['reach'], 'ok')
+
+    def test_target_with_every_ip_unreachable_does_not_change_the_verdict(self):
+        dead = ('T', 'P', 'social', 'l.example', 1, '147.92.1.1', '-', '-', '000', '-', '-', 'dead')
+        self.analyze(rows(*self.calibration(), self.direct(), dead, *self.retests(dead, None, None)),
+                     [('ai', 'a.example'), ('social', 'l.example')])
+        self.assert_verdict('clean')
+        self.assertEqual({t['name']: t['reach'] for t in self.json()['targets']}, {'a.example': 'ok', 'l.example': 'dead'})
+        self.assertIn('l.example 的 IP 复测两次全都连不上', self.text())
+
+    def test_split_by_ip_is_its_own_class(self):
+        # 加密 DNS 下同一个域名两个网段的 IP 各走各的出口
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'E', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', '10.0.0.1 1.2.3.4', 'ok'),
+                          ('T', 'E', 'shop', 's.example', 1, '4.4.4.4', '9.9.9.9', 'cloudflare', '-', '-', '10.0.0.2 5.6.7.8', 'ok'),
+                          ('T', 'P', 'shop', 's.example', 1, '4.4.4.4', '9.9.9.9', 'cloudflare', '-', '-', '10.0.0.2 5.6.7.8', 'ok')),
+                     [('shop', 's.example')])
+        self.assert_verdict('split')
+        data = self.json()
+        self.assertEqual(data['targets'][0]['class'], 'byip')
+        self.assertEqual(data['coverage']['split_by_ip'], 1)
+        self.assertEqual([(i['ip'], i['exit_ids']) for i in data['targets'][0]['ips']],
+                         [('3.3.3.3', ['A']), ('4.4.4.4', ['B'])])
+        self.assertIs(data['targets'][0]['split_by_ip'], True)
+        text = self.text()
+        self.assertIn('1 个目标按 IP 分流', text)
+        self.assertIn('按IP', text)
+        self.assertIn('1 个目标按 IP 分流', self.summary())
+
+    def test_split_by_ip_still_counts_when_system_dns_is_fake_ip(self):
+        # 系统 DNS 被透明代理接管时类别写 fakeip，加密 DNS 下看到的按 IP 分流不能因此丢掉
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'E', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', '-', 'ok'),
+                          ('T', 'E', 'shop', 's.example', 1, '4.4.4.4', '9.9.9.9', 'cloudflare', '-', '-', '-', 'ok'),
+                          ('T', 'P', 'shop', 's.example', 1, '198.18.0.9', '-', 'fakeip', '-', '-', '-'),
+                          ('T', 'P', 'ai', 'g.example', 1, '5.5.5.5', '9.9.9.9', 'google', '-', '-', '-', 'ok')),
+                     [('shop', 's.example'), ('ai', 'g.example')])
+        data = self.json()
+        target = data['targets'][0]
+        self.assertEqual((target['class'], target['split_by_ip']), ('fakeip', True))
+        self.assertEqual(data['coverage']['split_by_ip'], 1)
+        self.assertIn('按IP', self.text())
+        self.assertIn('fake-ip，按 IP', self.markdown())
+
+    def test_same_ip_changing_exit_is_not_split_by_ip(self):
+        # 同一个 IP 两轮走了不同出口，是时间上的变化，不能说成按 IP
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', '-', 'ok'),
+                          ('T', 'P', 'shop', 's.example', 2, '3.3.3.3', '9.9.9.9', 'cloudflare', '-', '-', '-', 'ok'),
+                          ('T', 'P', 'ai', 'g.example', 1, '5.5.5.5', '9.9.9.9', 'google', '-', '-', '-', 'ok')),
+                     [('shop', 's.example'), ('ai', 'g.example')])
+        self.assertNotEqual(self.json()['targets'][0]['class'], 'byip')
 
     def split_data(self):
         return rows(*self.calibration(),
@@ -773,6 +888,57 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(by_name['a.example']['class'], 'fakeip')
         self.assertEqual(by_name['b.example']['class'], 'dnsblock')
 
+    def test_encrypted_pass_probes_each_range_from_both_resolvers(self):
+        # Google 给两个同网段的 IP，Cloudflare 给另一个网段的；那个网段走了另一个出口
+        self.state_file('doh', 'a.example 2.2.2.2 2.2.2.3\n')
+        self.state_file('doh_cf', 'a.example 3.3.3.3\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n3.3.3.3 9.9.9.9\n')
+        result = self.run_script(*self.common(self.targets('ai a.example\n')), '-j', '--exit-code')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data['verdict'], 'split')
+        self.assertEqual(data['targets'][0]['class'], 'byip')
+        pins = [r['pin'] for r in self.requests('https://a.example/cdn-cgi/trace')]
+        self.assertIn('2.2.2.2', pins)
+        self.assertIn('3.3.3.3', pins)
+        self.assertNotIn('2.2.2.3', pins)  # 同一个 /24 只测一个
+
+    def test_ip_range_that_cannot_be_reached_is_a_block(self):
+        self.state_file('doh', 'a.example 2.2.2.2\n')
+        self.state_file('sysdns', 'a.example 4.4.4.4\n')
+        self.state_file('dead', '2.2.2.2\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = self.run_script(*self.common(self.targets('ai a.example\n')), '-j', '--exit-code')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data['verdict'], 'blocked')
+        target = data['targets'][0]
+        self.assertEqual(target['reach'], 'partial')
+        self.assertEqual({i['ip']: i['reachable'] for i in target['ips']}, {'2.2.2.2': False, '4.4.4.4': True})
+        # 当初那一次，加两次复测
+        self.assertEqual(len([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']), 3)
+
+    def test_one_off_timeout_is_retested_and_not_a_block(self):
+        # 头三个请求（认 CDN、回显、翻页面）都超时，复测时恢复
+        self.state_file('doh', 'a.example 2.2.2.2\n')
+        self.state_file('sysdns', 'a.example 4.4.4.4\n')
+        self.state_file('flaky', '2.2.2.2 3\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = self.run_script(*self.common(self.targets('ai a.example\n')), '-j', '--exit-code')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data['verdict'], 'clean')
+        self.assertEqual(data['targets'][0]['reach'], 'ok')
+
+    def test_ip_target_that_cannot_be_reached(self):
+        self.state_file('dead', '149.154.175.50\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = self.run_script(*self.common(self.targets('ai a.example\ntelegram 149.154.175.50\n')), '--exit-code')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('149.154.175.50 的 IP 复测两次全都连不上', result.stdout)
+        # 两种解析方式各测一次，各复测两次
+        self.assertEqual(len(self.requests('http://149.154.175.50:443/')), 6)
+
     def test_sni_sniff_tells_changed_moved_and_failed_apart(self):
         self.state_file('exit_for', 'default 8.8.8.8\n')
         self.state_file('sni_moved', 'a.example\n')
@@ -865,8 +1031,8 @@ class IntegrationTests(unittest.TestCase):
         text = seen.decode('utf-8', 'replace')
         self.assertIn('低压力检测', text)
         self.assertIn('系统 DNS', text)
-        self.assertIn('复测只出现一次的出口', text)
-        self.assertIn('1 个，1 个没有再出现', text)
+        self.assertIn('复测偶发的读数', text)
+        self.assertIn('1 个，1 个出口没有再出现', text)
         self.assertIn('未发现分流', text)
         self.assertIn('1 个出口只出现过 1 次', text)
         self.assertIn('\x1b[?25h', text)  # 退出时恢复光标
