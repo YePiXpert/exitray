@@ -1153,10 +1153,17 @@ run_retest() {
   wait_all
   analyze
   settle_triggers
-  local note dead
-  note="$count 个，$(ui_lines "$WORK/unstable.tsv") 个出口没有再出现"
+  # 复测有三种结果：看到别的出口（偶发，不算数）、又看到同一个出口（确认）、没拿到回显（还是只有
+  # 一次，没能确认）。分开说，免得“0 个被推翻”读成“都确认了”
+  local note gone open dead
+  note="$count 个"
+  gone=$(ui_lines "$WORK/unstable.tsv")
+  open=$(awk -F'\t' '$4 != 1 && $3 + 0 <= 1 { n++ } END { print n + 0 }' "$WORK/exits.tsv")
   dead=$(awk -F'\t' '$17 == "partial" || $17 == "dead" { n++ } END { print n + 0 }' "$WORK/targets.tsv")
+  (( gone == 0 )) || note+="，$gone 个出口复测看到的是别的出口，按偶发处理"
+  (( open == 0 )) || note+="，$open 个出口复测没拿到回显，没能确认"
   (( dead == 0 )) || note+="，$dead 个目标有 IP 确实连不上"
+  (( gone + open + dead > 0 )) || note+="，复测都确认了"
   step_end "$note"
 }
 
@@ -1732,6 +1739,9 @@ FILENAME == F_TARGETS {
   if ($17 == "partial") { npart++; part = part (part == "" ? "" : "、") $2 }
   if ($17 == "dead") { nalldead++; alldead = alldead (alldead == "" ? "" : "、") $2 }
   if (BI[nt] || $17 == "partial" || $17 == "dead") nipshow++
+  # 靠路由推断到各个出口的目标数，一个目标只算一次
+  if ($5 == "inferred") INFT[$4]++
+  else if ($12 == "inferred") INFT[$11]++
   next
 }
 FILENAME == F_TRIGGER { ntr++; GN[ntr] = $2; GI[ntr] = $3; GB[ntr] = $4; GA[ntr] = $5; next }
@@ -1795,8 +1805,10 @@ END {
     pre = XI[1]; sub(/\.[0-9]+$/, ".", pre)
     for (j = 2; j <= nx; j++) if (index(XI[j], pre) != 1) same24 = 0
     if (same24) print "      " DIM "这些出口在同一个 /24，也可能是运营商的出口池轮换，不一定是分流" R
+    # 只回显过一次的出口，若另有至少 2 个目标的路由走它那条线路（推断到它），就算有旁证：
+    # 偶发的读数和默认出口同一条线路，推断不会落到它上面
     once = 0
-    for (j = 2; j <= nx; j++) if (XS[j] + 0 <= 1) once++
+    for (j = 2; j <= nx; j++) if (XS[j] + 0 <= 1 && INFT[XI[j]] + 0 < 2) once++
     if (once > 0) print "      " DIM once " 个出口只回显过 1 次，复测没能确认，可能是误报，看明细确认" R
   }
   if (npart > 0)
@@ -1824,6 +1836,7 @@ END {
     if (XKIND[j] == "proxy") line = line "  " YEL "标记为代理" R
     print line
     line = "回显 " XS[j] " 次"
+    if (j > 1 && XS[j] + 0 <= 1 && INFT[XI[j]] + 0 >= 2) line = line "，另有 " INFT[XI[j]] " 个目标的路由走同一条线路"
     if (XSIG[j] != "-") line = line " · 线路 " XSIG[j]
     if (XHOST[j] != "-") line = line " · 反解 " XHOST[j]
     print "         " DIM line R

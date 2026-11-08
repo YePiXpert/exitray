@@ -569,6 +569,30 @@ class AnalyzeTests(unittest.TestCase):
         self.assertIn('复测没能确认', self.text())
         self.assertEqual((self.work / 'once.tsv').read_text(), '')
 
+    def test_one_echo_exit_backed_by_routes_is_not_doubted(self):
+        # 上游把一批 IP 导去另一条线路时，常常只有一个目标拿得到回显，其余目标靠路由推断过去。
+        # 至少 2 个目标的路由走那条和默认不同的线路，就不再提示可能是误报
+        line = '10.0.0.1 10.66.1.202'
+        for extra in (1, 2):
+            data = [*self.calibration(), self.direct('b.example', ip='1.1.1.3'),
+                    ('T', 'P', 'meta', 'm0.example', 1, '2.2.2.1', '9.9.9.9', 'meta', '-', '-', line + ' 5.5.5.5'),
+                    ('T', 'P', 'meta', 'm0.example', 'r1', '2.2.2.1', '-', '-', '-', '-', line + ' 5.5.5.5'),
+                    ('T', 'P', 'meta', 'm0.example', 'r2', '2.2.2.1', '-', '-', '-', '-', line + ' 5.5.5.5')]
+            names = [('ai', 'b.example'), ('meta', 'm0.example')]
+            for k in range(1, extra + 1):
+                data.append(('T', 'P', 'meta', f'm{k}.example', 1, f'2.2.3.{k}', '-', '-', '-', '-', f'{line} 5.5.6.{k}'))
+                names.append(('meta', f'm{k}.example'))
+            self.analyze(rows(*data), names)
+            self.assert_verdict('split')
+            self.assertEqual(self.system_dns(f'm{extra}.example')[0], '9.9.9.9')
+            text = self.text()
+            if extra == 1:
+                self.assertIn('复测没能确认', text)
+                self.assertNotIn('目标的路由走同一条线路', text)
+            else:
+                self.assertNotIn('复测没能确认', text)
+                self.assertIn('回显 1 次，另有 2 个目标的路由走同一条线路', text)
+
     def test_exit_first_seen_during_retest_does_not_count_either(self):
         self.one_off('8.8.8.8', '7.7.7.7')
         self.assert_verdict('clean')
@@ -1032,7 +1056,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn('低压力检测', text)
         self.assertIn('系统 DNS', text)
         self.assertIn('复测偶发的读数', text)
-        self.assertIn('1 个，1 个出口没有再出现', text)
+        self.assertIn('1 个，1 个出口复测看到的是别的出口，按偶发处理', text)
         self.assertIn('未发现分流', text)
         self.assertIn('1 个出口只出现过 1 次', text)
         self.assertIn('\x1b[?25h', text)  # 退出时恢复光标
