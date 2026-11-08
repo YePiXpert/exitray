@@ -6,7 +6,7 @@ VPS / 家宽出口分流检测。不比路由首跳，直接看每个目标实�
 
 ## 一键运行
 
-在要检测的机器上执行，选好范围后一般约 2 分钟：
+在要检测的机器上执行，选好范围后，完整检测一般 5 分钟左右：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh)
@@ -26,29 +26,37 @@ bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/sp
 
 ```text
   ✓ 确认出口             203.0.113.63 · 地区 tw  1s
-  ✓ 准备探测             90 个目标 · 路由 mtr-icmp · 预计约 2 分钟  2s
+  ✓ 准备探测             142 个目标 · 路由 mtr-icmp · 预计约 5 分钟  2s
   ✓ 校准出口             已发现 1 个出口  6s
   ✓ 加密 DNS             已发现 2 个出口  25s
   ✓ 明文 DNS 触发测试    触发 4 / 可测 23  9s
   ⠹ 系统 DNS 第 1/2 轮   ████████░░░░░░░░░░░░ 36/90 10s  www.okx.com
 ```
 
-需要 bash 4+、curl、awk。建议装上 mtr 和 dig，缺了会跳过对应检查：
+需要 bash 4+、curl、awk。探测路由要 mtr（或 traceroute、tracepath），明文 DNS 触发测试要 dig。缺了的话，脚本开始时会用系统的包管理器一条命令装好，例如 Debian/Ubuntu 上是 `apt-get install mtr-tiny dnsutils`，以后再运行就不用装了：
 
-```bash
-apt install -y mtr-tiny dnsutils
+```text
+  ↓ 安装依赖 mtr-tiny dnsutils（apt-get，只装这一次；不想装加 --no-install）
+  ↓ 已装好 mtr-tiny dnsutils
 ```
 
-全程只读，不改系统配置，也不安装任何东西。临时文件放在 mktemp 目录，退出时删除。
+支持 apt、dnf、yum、apk、pacman 和 zypper，要 root 或免密 sudo。不是 root、装失败或加了 `--no-install` 时不装，跳过对应检查。
+
+除了这一次安装，全程只读，不改系统配置。临时文件放在 mktemp 目录，退出时删除。
 
 ## 输出长什么样
 
 下面是一台有分流的机器的实测结果，IP、线路和运营商已替换成示例：
 
 ```text
-结论  有分流，发现 3 个出口，其中 1 个不是默认运营商
-      13 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流
-      26 个目标在分流名单内：加密 DNS 下也走分流
+╭──────────────────────────────────────────────────────────────────╮
+│  splitcheck 1.4.0  vps1  2026-11-08 21:06:38  用时 236 秒        │
+│  142 个目标 · 地区 tw · 路由探测 mtr-icmp · 系统 DNS 8.8.8.8     │
+╰──────────────────────────────────────────────────────────────────╯
+
+  ┃ 结论  有分流，发现 3 个出口，其中 1 个不是默认运营商
+  ┃ !  13 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流
+  ┃ !  26 个目标在分流名单内：加密 DNS 下也走分流
 
 ── 出口 ──────────────────────────────────────────────────────────
   A 默认  203.0.113.63      AS64500 Example Broadband  TW Taipei
@@ -58,31 +66,33 @@ apt install -y mtr-tiny dnsutils
   C       192.0.2.36        AS64500 Example Broadband  TW Taipei
          回显 23 次 · 线路 10.0.2.1 > 10.42.0.1
 
-── 分类概览（目标数） ────────────────────────────────────────────
-             系统 DNS           加密 DNS
-               A   B   C   ?      A   B   C   ?
-  AI           9   .   2   .      9   .   2   .
-  Meta         1   9   .   .      3   7   .   .
-  Telegram     .   8   .   .      .   8   .   .
-  虚拟币      12   .   .   .     12   .   .   .
-  银行         .   8   .   .      6   2   .   .
+── 分类概览（每格一个目标） ──────────────────────────────────────
+            系统 DNS            加密 DNS
+  AI        █████████▒▒   11    █████████▒▒   11
+  Meta      █▓▓▓▓▓▓▓▓▓    10    ███▓▓▓▓▓▓▓    10
+  Telegram  ▓▓▓▓▓▓▓▓       8    ▓▓▓▓▓▓▓▓       8
+  虚拟币    ████████████  12    ████████████  12
+  银行      ▓▓▓▓▓▓▓▓       8    ██████▓▓       8
+            █ A   ▓ B   ▒ C   ░ 未知
 
 ── 明文 DNS 触发测试（外地节点 IP，明文查询前后的真实出口） ──────
   www.facebook.com                  57.144.248.1     A → B
   accounts.google.com               192.178.226.84   A → C
   触发 4 / 可测 23（另有 10 个拿不到回显）
 
-── 明细 ──────────────────────────────────────────────────────────
-  目标                                系统 DNS             轮次  加密  证据
+── 明细（出口用上面的字母） ──────────────────────────────────────
+  目标                                系统 DNS      轮次  加密  证据
   AI
-    chatgpt.com                       A 203.0.113.63       2/2   A     直接·CF
-    gemini.google.com                 C 192.0.2.36         2/2   C     直接·Google  名单内
+    chatgpt.com                       A             2/2   A     直接·CF
+    gemini.google.com                 C             2/2   C     直接·Google  名单内
   Meta
-    www.facebook.com                  B 198.51.100.125     2/2   B     直接·Meta  名单内
-    www.instagram.com                 B 198.51.100.125     2/2   A     推断  DNS触发
+    www.facebook.com                  B             2/2   B     直接·Meta  名单内
+    www.instagram.com                 B             2/2   A     推断  DNS触发
   Telegram
-    149.154.175.50                    B 198.51.100.125     2/2   B     推断  名单内
+    149.154.175.50                    B             2/2   B     推断  名单内
 ```
+
+结论左边的竖线按结论着色：有分流是红色，DNS 被动手脚、有 IP 被拦截或证据不足是黄色，没有分流是绿色。每条前面的符号：`✗` 是问题，`!` 要留意，`?` 判断不了，`·` 是补充说明。分类概览里每格是一个目标，不同出口用不同的块（`█ ▓ ▒`），没有颜色的终端也分得开。
 
 ### 证据
 
@@ -111,15 +121,20 @@ apt install -y mtr-tiny dnsutils
 
 有的线路不按域名，而按目标 IP 段改道或拦截，例如只把 Meta 的旧网段、LINE、虾皮台湾的 IP 转给 WARP，或者直接丢掉。同一个域名换个解析器就可能落在规则外：Google DoH 带上台湾的 ECS，`www.facebook.com` 解析到 31.13.x.x 的旧网段，运营商 DNS 给的却可能是 57.144.x.x 的新网段。只测一个 IP，结论就看运气。
 
-所以加密 DNS 那一轮把 Google（带出口所在网段的 ECS）和 Cloudflare 的应答合起来，每个 /24 测一个 IP，最多 3 个；系统 DNS 每轮测一个网段，几轮下来轮换。每个 IP 都记下走哪个出口、连不连得上，有差别的单独列出来：
+所以加密 DNS 那一轮把 Google（带出口所在网段的 ECS）和 Cloudflare 的应答合起来，每个 /24 测一个 IP，最多 3 个；系统 DNS 每轮测一个网段，几轮下来轮换。每个 IP 都记下走哪个出口、连不连得上。有 IP 连不上、或几个 IP 走法不同的目标，按网段汇总成一张表，连不上的排在前面；同一个 /16 里几段结果一样就并成一行。下面是台湾一条家宽线路的实测：
 
 ```text
-── 逐 IP（各个 IP 结果不一样或连不上的目标） ──────────────────────
-  www.facebook.com                  31.13.87.36      ×  复测两次都连不上
-                                    57.144.110.1     A
-  legy.line-apps.com                147.92.150.193   B
-                                    43.223.1.40      A
+── 逐 IP（按网段汇总，复测两次都不通才算连不上） ─────────────────
+  网段                结果            目标
+  31.13.87.0/24       ✗ 连不上        10 个  www.facebook.com 等
+  147.92.x.x          ✗ 连不上         2 个  line.me、legy.line-apps.com
+  103.117.4.0/24      ✗ 连不上         2 个  shopee.tw、seller.shopee.tw
+  57.144.x.x          ✓ A             10 个  www.facebook.com 等
+  43.223.23.0/24      ✓ A              1 个  legy.line-apps.com
+  147.136.172.0/24    ✓ A              1 个  shopee.tw
 ```
+
+每个目标每个 IP 的结果加 `-v` 列出，JSON 里也有。
 
 同一个域名有的 IP 连不上、有的正常，结论是“出口没有分流，但有目标的部分 IP 连不上，像是被按 IP 拦截”；几个 IP 走了不同出口，算有分流，标成按IP。
 
@@ -204,8 +219,9 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
     --no-route        不探测路由，只看回显
     --no-dns-test     跳过加密 DNS 轮和明文 DNS 触发测试
     --no-sniff        跳过 SNI 嗅探测试
--b, --brief           只输出结论和分类概览
--v, --verbose         额外输出每一轮的 IP、路径和证据
+    --no-install      缺 mtr 或 dig 时不自动安装
+-b, --brief           只输出结论、分类概览和逐 IP 汇总
+-v, --verbose         额外输出每一轮和每个 IP 的结果、路径和证据
 -j, --json            输出 JSON
 -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码
     --no-mask         分享摘要和 Markdown 里显示完整 IP

@@ -41,6 +41,12 @@ def rows(*items):
     return ''.join('\t'.join(str(c) for c in item) + '\n' for item in items)
 
 
+def cells(text):
+    """终端里的显示宽度：汉字和全角标点占 2 格，框线、方块、✓ 这些占 1 格。"""
+    import unicodedata
+    return sum(2 if unicodedata.east_asian_width(ch) in 'WF' else 1 for ch in text)
+
+
 class HelperTests(unittest.TestCase):
     def test_is_public_ipv4(self):
         for value, ok in [('8.8.8.8', True), ('172.32.0.1', True), ('100.128.0.1', True),
@@ -134,8 +140,10 @@ class SpawnTests(unittest.TestCase):
 
 class ArgsTests(unittest.TestCase):
     def run_script(self, *args):
+        # 测试里绝不能真去装软件（CI 的机器有免密 sudo）
         return subprocess.run([BASH, str(SCRIPT), *args], text=True, encoding='utf-8',
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env={**os.environ, 'SPLITCHECK_NO_INSTALL': '1'},
                               stdin=subprocess.DEVNULL, timeout=20)
 
     def test_version_and_help(self):
@@ -228,6 +236,47 @@ class EmitTests(unittest.TestCase):
         """)
         result = shell(code)
         self.assertEqual((result.stdout, result.stderr), ('x\n', ''))
+
+    def fake_installer(self):
+        """只有假的 apt-get 和 sudo，外加 install_deps 要用的几个命令。"""
+        root = Path(tempfile.mkdtemp(prefix='splitcheck-inst-'))
+        self.addCleanup(shutil.rmtree, root, True)
+        bin_dir = root / 'bin'
+        bin_dir.mkdir()
+        for tool in ('env', 'mktemp', 'tail', 'rm', 'touch', 'date'):
+            os.symlink(shutil.which(tool), bin_dir / tool)
+        scripts = {
+            # 第一次装会失败（索引太旧），update 之后才装得上
+            'apt-get': '#!/bin/sh\necho "$*" >> "$STATE/log"\ncase "$1" in\n'
+                       '  update) touch "$STATE/updated" ;;\n'
+                       '  install) [ -f "$STATE/updated" ] || { echo "E: Unable to locate package"; exit 100; } ;;\n'
+                       'esac\n',
+            'sudo': '#!/bin/sh\n[ "$1" = -n ] && shift\n[ "$1" = true ] && exit 0\nexec "$@"\n',
+        }
+        for name, body in scripts.items():
+            write(bin_dir / name, body)
+            (bin_dir / name).chmod(0o755)
+        return root, {'PATH': str(bin_dir), 'STATE': str(root), 'TMPDIR': str(root)}
+
+    def test_missing_tools_are_installed_in_one_go(self):
+        root, env = self.fake_installer()
+        result = shell('USE_ROUTE=1; USE_DNS_TEST=1; install_deps', env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((root / 'log').read_text().splitlines(),
+                         ['install -y -qq mtr-tiny dnsutils', 'update -qq', 'install -y -qq mtr-tiny dnsutils'])
+        self.assertIn('已装好 mtr-tiny dnsutils', result.stderr)
+
+    def test_install_only_what_the_run_needs_and_can_be_turned_off(self):
+        root, env = self.fake_installer()
+        # 不测 DNS 触发就不装 dig
+        shell('USE_ROUTE=1; USE_DNS_TEST=0; install_deps', env=env)
+        self.assertEqual((root / 'log').read_text().splitlines()[-1], 'install -y -qq mtr-tiny')
+        (root / 'log').unlink()
+        for code, extra in (('INSTALL=0; install_deps', {}), ('install_deps', {'SPLITCHECK_NO_INSTALL': '1'}),
+                            ('USE_ROUTE=0; USE_DNS_TEST=0; install_deps', {})):
+            result = shell(code, env={**env, **extra})
+            self.assertEqual((result.returncode, result.stderr), (0, ''), code)
+            self.assertFalse((root / 'log').exists(), code)
 
     def test_pick_one_ip_per_slash_24(self):
         out = shell("printf '1.1.1.1\\n1.1.1.2\\n2.2.2.2\\n3.3.3.3\\n4.4.4.4\\n' | pick_ips 3").stdout
@@ -368,7 +417,12 @@ class AnalyzeTests(unittest.TestCase):
         text = self.text()
         self.assertIn('1 个目标有部分 IP 连不上', text)
         self.assertIn('部分IP不通', text)
-        self.assertRegex(text, r'31\.13\.1\.1 +.*复测两次都连不上')
+        self.assertIn('连不上的网段：31.13.1.0/24', text)
+        self.assertRegex(text, r'31\.13\.1\.0/24 +✗ 连不上 +1 个  f\.example')
+        self.assertRegex(text, r'57\.144\.1\.0/24 +✓ A +1 个  f\.example')
+        # 每个 IP 的结果只在 -v 时列
+        self.assertNotRegex(text, r'31\.13\.1\.1 +.*复测两次都连不上')
+        self.assertRegex(self.run_report('VERBOSE=1 report_text'), r'31\.13\.1\.1 +.*复测两次都连不上')
         self.assertIn('1 个目标部分 IP 连不上', self.summary())
         self.assertIn('部分 IP 连不上 |', self.markdown())
 
@@ -396,7 +450,51 @@ class AnalyzeTests(unittest.TestCase):
                      [('ai', 'a.example'), ('social', 'l.example')])
         self.assert_verdict('clean')
         self.assertEqual({t['name']: t['reach'] for t in self.json()['targets']}, {'a.example': 'ok', 'l.example': 'dead'})
-        self.assertIn('l.example 的 IP 复测两次全都连不上', self.text())
+        text = self.text()
+        self.assertIn('1 个目标的 IP 复测两次全都连不上', text)
+        self.assertRegex(text, r'┃ +l\.example')
+        # judge 把它也算进“解析失败或连不上”，结论里不再说第二遍
+        self.assertNotIn('解析失败或连不上', text)
+
+    def test_ip_ranges_are_summed_up_by_network(self):
+        # 像 Seednet 那台：旧网段几个 IP 都不通，新网段两段都通，合成 57.144.x.x 一行；不通的排前面
+        rs = [*self.calibration()]
+        names = []
+        for n, (old, new1, new2) in enumerate([('31.13.87.36', '57.144.92.1', '57.144.64.1'),
+                                               ('31.13.87.5', '57.144.92.128', '57.144.64.128'),
+                                               ('31.13.87.174', '57.144.92.34', '57.144.64.34')]):
+            name = f'm{n}.example'
+            names.append(('meta', name))
+            dead = ('T', 'E', 'meta', name, 1, old, '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+            rs += [dead, *self.retests(dead, None, None)]
+            for ip in (new1, new2):
+                rs.append(('T', 'E', 'meta', name, 1, ip, '8.8.8.8', 'meta', '-', '-', '10.0.0.1 1.2.3.4', 'ok'))
+            rs.append(('T', 'P', 'meta', name, 1, new1, '8.8.8.8', 'meta', '-', '-', '10.0.0.1 1.2.3.4', 'ok'))
+        self.analyze(rows(*rs), names)
+        self.assert_verdict('blocked')
+        lines = self.text().splitlines()
+        start = next(i for i, l in enumerate(lines) if l.startswith('── 逐 IP'))
+        table = [l.split()[:3] for l in lines[start + 2:start + 4]]
+        self.assertEqual(table, [['31.13.87.0/24', '✗', '连不上'], ['57.144.x.x', '✓', 'A']])
+        self.assertEqual(lines[start + 4], '')
+        self.assertIn('m0.example、m1.example、m2.example', lines[start + 2])
+
+    def test_report_layout(self):
+        self.analyze(rows(*self.calibration(), self.DEAD_E, *self.retests(self.DEAD_E, None, None), self.LIVE_P),
+                     [('meta', 'f.example')])
+        lines = self.text().splitlines()
+        # 抬头的框四条边对齐
+        box = [l for l in lines if l and l[0] in '╭│╰']
+        self.assertEqual(len(box), 4)
+        self.assertEqual({cells(l) for l in box}, {cells(box[0])}, box)
+        # 分区标题一样长
+        rules = [l for l in lines if l.startswith('── ')]
+        self.assertEqual(len({cells(l) for l in rules}), 1, rules)
+        # 没有目标的分类不列
+        self.assertFalse([l for l in lines if l.lstrip().startswith(('AI', 'Telegram'))], lines)
+        # 条形图每格一个目标，图例写明每种块是哪个出口
+        self.assertIn('  Meta      █          1    ░          1', lines)
+        self.assertTrue(any('█ A' in l and '░ 未知' in l for l in lines))
 
     def test_split_by_ip_is_its_own_class(self):
         # 加密 DNS 下同一个域名两个网段的 IP 各走各的出口
@@ -736,7 +834,8 @@ class IntegrationTests(unittest.TestCase):
     def env(self, **extra):
         return {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}',
                 'STUB_DIR': str(self.state), 'STUB_LOG': str(self.log),
-                'STUB_DNSLOG': str(self.dnslog), 'TMPDIR': str(self.dir), **extra}
+                'STUB_DNSLOG': str(self.dnslog), 'TMPDIR': str(self.dir),
+                'SPLITCHECK_NO_INSTALL': '1', **extra}
 
     def run_script(self, *args, **extra):
         return subprocess.run([BASH, str(SCRIPT), *args], text=True, encoding='utf-8',
@@ -959,7 +1058,8 @@ class IntegrationTests(unittest.TestCase):
         self.state_file('exit_for', 'default 8.8.8.8\n')
         result = self.run_script(*self.common(self.targets('ai a.example\ntelegram 149.154.175.50\n')), '--exit-code')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('149.154.175.50 的 IP 复测两次全都连不上', result.stdout)
+        self.assertIn('1 个目标的 IP 复测两次全都连不上', result.stdout)
+        self.assertRegex(result.stdout, r'149\.154\.175\.0/24 +✗ 连不上 +1 个  149\.154\.175\.50')
         # 两种解析方式各测一次，各复测两次
         self.assertEqual(len(self.requests('http://149.154.175.50:443/')), 6)
 

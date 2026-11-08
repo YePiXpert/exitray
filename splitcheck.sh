@@ -45,6 +45,7 @@ PROXY=""
 USE_ROUTE=1
 USE_DNS_TEST=1
 USE_SNIFF=1
+INSTALL=1
 JSON=0
 MARKDOWN=0
 MASK=1
@@ -93,8 +94,9 @@ usage() {
       --no-route        不探测路由，只看回显（不回显的目标显示未知）
       --no-dns-test     跳过加密 DNS 轮和明文 DNS 触发测试
       --no-sniff        跳过 SNI 嗅探测试
-  -b, --brief           只输出结论和分类概览
-  -v, --verbose         额外输出每一轮的 IP、路径和证据
+      --no-install      缺 mtr 或 dig 时不自动安装
+  -b, --brief           只输出结论、分类概览和逐 IP 汇总
+  -v, --verbose         额外输出每一轮和每个 IP 的结果、路径和证据
   -j, --json            输出 JSON
   -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
       --no-mask         分享摘要和 Markdown 里显示完整 IP
@@ -108,7 +110,8 @@ usage() {
 2 有分流、DNS 被动了手脚或有 IP 被拦截，3 没发现分流但部分目标证据不足。
 
 依赖：bash 4+、curl、awk。mtr、traceroute 或 tracepath 用于探测路由，dig 用于明文 DNS
-触发测试，缺少时跳过对应检查（Debian 可装 mtr-tiny 和 dnsutils）。
+触发测试。缺少时用系统的包管理器（apt、dnf、yum、apk、pacman、zypper）一次装好，
+要 root 或免密 sudo；装不了就跳过对应检查。
 
 明文解析过的 IP 会在上游名单里留一段时间，两次运行建议间隔 15 分钟以上，
 否则加密 DNS 那一轮可能受上一次运行影响。
@@ -134,6 +137,10 @@ ai www.perplexity.ai
 ai copilot.microsoft.com
 ai openrouter.ai
 ai huggingface.co
+ai sora.com
+ai chat.deepseek.com
+ai www.midjourney.com
+ai poe.com
 meta www.facebook.com
 meta graph.facebook.com
 meta static.xx.fbcdn.net
@@ -162,16 +169,25 @@ social www.twitch.tv
 social www.snapchat.com
 social line.me
 social legy.line-apps.com
+social obs.line-apps.com
+social bsky.app
+social chat.signal.org
 google www.google.com
 google www.youtube.com
 google accounts.google.com
 google i.ytimg.com
+google play.google.com
 stream www.netflix.com
 stream www.disneyplus.com
 stream www.primevideo.com
 stream www.hbomax.com
 stream www.spotify.com
 stream tv.apple.com
+stream music.apple.com
+stream www.paramountplus.com
+stream www.dazn.com
+stream www.crunchyroll.com
+stream www.bilibili.com
 finance www.paypal.com
 finance wise.com
 finance stripe.com
@@ -179,6 +195,9 @@ finance www.visa.com
 finance www.mastercard.com
 finance www.interactivebrokers.com
 finance www.tradingview.com
+finance www.revolut.com
+finance www.payoneer.com
+finance www.moomoo.com
 crypto www.binance.com
 crypto api.binance.com
 crypto www.okx.com
@@ -191,13 +210,21 @@ crypto www.gate.com
 crypto www.mexc.com
 crypto www.htx.com
 crypto metamask.io
+crypto polymarket.com
+crypto app.hyperliquid.xyz
+crypto www.bitfinex.com
 shop www.amazon.com
 shop www.ebay.com
 shop www.aliexpress.com
 shop www.temu.com
 shop www.taobao.com
+shop www.shein.com
+shop www.apple.com
+shop apps.apple.com
 dev github.com
 dev raw.githubusercontent.com
+dev objects.githubusercontent.com
+dev ghcr.io
 dev gitlab.com
 dev registry.npmjs.org
 dev pypi.org
@@ -209,6 +236,9 @@ game www.epicgames.com
 game www.playstation.com
 game www.xbox.com
 game www.nintendo.com
+game www.roblox.com
+game www.ea.com
+game battle.net
 @tw bank www.ctbcbank.com
 @tw bank www.cathaybk.com.tw
 @tw bank www.esunbank.com
@@ -216,6 +246,8 @@ game www.nintendo.com
 @tw bank www.taishinbank.com.tw
 @tw bank www.megabank.com.tw
 @tw bank www.bot.com.tw
+@tw bank www.firstbank.com.tw
+@tw bank www.sinopac.com
 @tw bank www.post.gov.tw
 @tw finance www.jkopay.com
 @tw shop shopee.tw
@@ -230,6 +262,12 @@ game www.nintendo.com
 @tw local www.dcard.tw
 @tw local udn.com
 @tw local www.gov.tw
+@tw local ani.gamer.com.tw
+@tw local www.104.com.tw
+@tw local www.591.com.tw
+@tw local www.kktv.me
+@tw local www.litv.tv
+@tw local hamivideo.hinet.net
 @jp bank www.bk.mufg.jp
 @jp bank www.smbc.co.jp
 @jp bank www.mizuhobank.co.jp
@@ -243,6 +281,8 @@ game www.nintendo.com
 @jp local www.nicovideo.jp
 @jp local abema.tv
 @jp local www.dmm.com
+@jp local tver.jp
+@jp local video.unext.jp
 @hk bank www.hsbc.com.hk
 @hk bank www.bochk.com
 @hk bank www.hangseng.com
@@ -250,6 +290,7 @@ game www.nintendo.com
 @hk shop www.hktvmall.com
 @hk local www.viu.com
 @hk local www.gov.hk
+@hk local www.mytvsuper.com
 @us bank www.chase.com
 @us bank www.bankofamerica.com
 @us bank www.wellsfargo.com
@@ -261,6 +302,7 @@ game www.nintendo.com
 @us shop www.costco.com
 @us local www.hulu.com
 @us local www.espn.com
+@us local www.peacocktv.com
 @sg bank www.dbs.com.sg
 @sg bank www.ocbc.com
 @sg bank www.uob.com.sg
@@ -430,12 +472,12 @@ show_menu() {
 
   请选择检测范围：
 
-    1) 完整检测    全部分类，约 2 分钟
+    1) 完整检测    全部分类，约 5 分钟
     2) AI 和社媒   AI、Meta、Telegram、社媒、Google
     3) 金融和购物  金融支付、虚拟币、银行、电商购物
     4) 流媒体      流媒体、Google
     5) 自选分类    输入分类名
-    6) 快速检测    全部分类，不测 DNS 触发，约 1 分钟
+    6) 快速检测    全部分类，不测 DNS 触发，约 3 分钟
     7) 低压力检测  全部分类，降低并发，适合小内存 VPS，用时更长
     0) 退出
 EOF
@@ -485,6 +527,7 @@ parse_args() {
       --no-route)    USE_ROUTE=0; shift ;;
       --no-dns-test) USE_DNS_TEST=0; shift ;;
       --no-sniff)    USE_SNIFF=0; shift ;;
+      --no-install)  INSTALL=0; shift ;;
       -b|--brief)    BRIEF=1; shift ;;
       -v|--verbose)  VERBOSE=1; shift ;;
       -j|--json)     JSON=1; shift ;;
@@ -511,6 +554,70 @@ parse_args() {
     USE_ROUTE=0
     USE_DNS_TEST=0
     USE_SNIFF=0
+  fi
+}
+
+# 缺路由工具或 dig 时，用系统的包管理器一条命令装齐，之后再运行就不用装了。要 root 或免密
+# sudo；--no-install 或 SPLITCHECK_NO_INSTALL=1 时不装，照旧跳过对应检查
+install_deps() {
+  (( INSTALL )) && [[ ${SPLITCHECK_NO_INSTALL:-} != 1 ]] || return 0
+  local route=0 dig=0 pm='' p log ok=0
+  local -a sudo=() pkgs=()
+  if (( USE_ROUTE )) && ! command -v mtr >/dev/null 2>&1 && ! command -v traceroute >/dev/null 2>&1 &&
+    ! command -v tracepath >/dev/null 2>&1; then
+    route=1
+  fi
+  (( USE_DNS_TEST )) && ! command -v dig >/dev/null 2>&1 && dig=1
+  (( route + dig > 0 )) || return 0
+  for p in apt-get dnf yum apk pacman zypper; do
+    command -v "$p" >/dev/null 2>&1 && { pm=$p; break; }
+  done
+  [[ -n $pm ]] || return 0
+  if (( EUID != 0 )); then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+      sudo=(sudo -n)
+    else
+      install_say "缺少$( (( route )) && printf ' mtr')$( (( dig )) && printf ' dig')，不是 root 也没有免密 sudo，不自动安装，跳过对应检查"
+      return 0
+    fi
+  fi
+  case $pm in
+    apt-get) (( route )) && pkgs+=(mtr-tiny); (( dig )) && pkgs+=(dnsutils) ;;
+    apk) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-tools) ;;
+    pacman) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind) ;;
+    *) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-utils) ;;
+  esac
+  install_say "安装依赖 ${pkgs[*]}（$pm，只装这一次；不想装加 --no-install）"
+  log=$(mktemp "${TMPDIR:-/tmp}/splitcheck-install.XXXXXX") || return 0
+  local -a lim=()
+  command -v timeout >/dev/null 2>&1 && lim=(timeout 300)
+  case $pm in
+    apt-get)
+      # 软件源索引太旧时先装不上，更新一次再装
+      if ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}" >"$log" 2>&1 ||
+        { ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} apt-get update -qq >>"$log" 2>&1 &&
+          ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}" >>"$log" 2>&1; }; then
+        ok=1
+      fi ;;
+    dnf|yum) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} "$pm" install -y -q "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
+    apk) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} apk add -q --no-progress "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
+    pacman) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} pacman -S --noconfirm --needed "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
+    zypper) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} zypper -n -q install "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
+  esac
+  hash -r
+  if (( ok )); then
+    install_say "已装好 ${pkgs[*]}"
+  else
+    install_say "安装失败，跳过对应检查：$(tail -1 "$log" 2>/dev/null)"
+  fi
+  rm -f "$log"
+}
+
+install_say() {
+  if (( UI )); then
+    printf '  %s↓%s %s\n' "$U_C" "$U_R" "$1" >&2
+  else
+    warn "$1"
   fi
 }
 
@@ -1663,15 +1770,95 @@ report_text() {
   cat > "$WORK/report.awk" <<'AWK'
 BEGIN { FS = "\t" }
 
-# 按显示宽度补空格：C locale 下 length 数字节，汉字 3 字节占 2 格
-function pad(s, w, t, hb, cells) {
+# 显示宽度。C locale 下 length 数字节：· × 这类 2 字节字符占 1 格；3 字节里 E2 开头的
+# （框线、方块、✓ ✗）占 1 格，汉字和全角标点占 2 格
+function dwidth(s, t, hb, n2, e2) {
   t = s; hb = gsub(/[^\001-\177]/, "", t)
-  cells = length(s) - hb + int(hb * 2 / 3)
+  if (hb == 0) return length(s)
+  t = s; n2 = gsub(/\302|\303/, "", t)
+  t = s; e2 = gsub(/\342/, "", t)
+  return length(s) - hb + n2 + e2 + (int((hb - 2 * n2) / 3) - e2) * 2
+}
+function pad(s, w, cells) {
+  cells = dwidth(s)
   return s (w > cells ? sprintf("%" (w - cells) "s", "") : "")
 }
-function dwidth(s, t, hb) {
-  t = s; hb = gsub(/[^\001-\177]/, "", t)
-  return length(s) - hb + int(hb * 2 / 3)
+function spc(n) { return n > 0 ? sprintf("%" n "s", "") : "" }
+function rep(ch, n, s, i) { s = ""; for (i = 1; i <= n; i++) s = s ch; return s }
+# 列表太长就截断：a、b、c 等（count 为真时写成“等 N 个”）
+function clip(s, w, count, a, n, i, out) {
+  n = split(s, a, "、"); out = ""
+  for (i = 1; i <= n; i++) {
+    if (out != "" && dwidth(out "、" a[i]) > w) return out (count ? " 等 " n " 个" : " 等")
+    out = out (out == "" ? "" : "、") a[i]
+  }
+  return out
+}
+# 结论栏：左边一条按结论着色的竖线，每条前面一个符号
+function cnote(icon, col, s) { print "  " VC "┃" R " " (col == "" ? icon : col icon R) "  " s }
+function more(s) { print "  " VC "┃" R "    " DIM s R }
+# 分类概览的条形图：每格一个目标，出口用不同的块，没有颜色也分得开
+function glyph(l) {
+  if (l == "A") return "█"
+  if (l == "B") return "▓"
+  if (l == "?") return "░"
+  if (l == "X") return "×"
+  return "▒"
+}
+function bar(k, enc, j, l, v, n, s) {
+  s = ""; BARW = 0
+  for (j = 1; j <= nx + 2; j++) {
+    l = (j <= nx) ? XL[j] : (j == nx + 1 ? "?" : "X")
+    v = (enc ? ME[k, l] : MP[k, l]) + 0
+    if (v == 0) continue
+    n = (BSCALE < 1) ? int(v * BSCALE + 0.5) : v
+    if (n < 1) n = 1
+    s = s lc(l, rep(glyph(l), n)); BARW += n; BART += v
+  }
+  return s
+}
+# 逐 IP 按网段汇总：每个 /24 看通不通、走哪个出口；同一个 /16 里几段结果都一样就并成一行
+function nets(t, m, i, j, na, ipa, ipb, ipc, a, n24, n16, s, rk, r) {
+  nn = 0; nrow = 0
+  for (t = 1; t <= nt; t++) {
+    if (!(BI[t] || RCH[t] == "partial" || RCH[t] == "dead")) continue
+    m = split(IPM[t], ipa, " ")
+    for (i = 1; i <= m; i++) {
+      split(ipa[i], ipb, "="); split(ipb[2], ipc, ":")
+      n24 = ipb[1]; sub(/\.[0-9]+$/, "", n24)
+      if (!(n24 in NI)) { nn++; N24[nn] = n24 }
+      NI[n24]++
+      if (ipc[2] == "dead") ND[n24]++
+      else {
+        na = split(ipc[1], a, "/")
+        for (j = 1; j <= na; j++)
+          if (a[j] != "?" && a[j] != "" && index("/" NL[n24] "/", "/" a[j] "/") == 0) NL[n24] = NL[n24] (NL[n24] == "" ? "" : "/") a[j]
+      }
+      NT[n24, t] = 1
+    }
+  }
+  for (i = 1; i <= nn; i++) {
+    n24 = N24[i]
+    if (ND[n24] + 0 == NI[n24]) s = "dead"
+    else if (ND[n24] + 0 > 0) s = "part:" NL[n24]
+    else s = "ok:" NL[n24]
+    SG[n24] = s
+    n16 = n24; sub(/\.[0-9]+$/, "", n16)
+    if (!(n16 in S16)) S16[n16] = s
+    else if (S16[n16] != s) S16[n16] = "*"
+    C16[n16]++
+  }
+  for (i = 1; i <= nn; i++) {
+    n24 = N24[i]; n16 = n24; sub(/\.[0-9]+$/, "", n16)
+    rk = (S16[n16] != "*" && C16[n16] > 1) ? n16 ".x.x" : n24 ".0/24"
+    if (!(rk in RIX)) { nrow++; RIX[rk] = nrow; RLAB[nrow] = rk; RSIG[nrow] = SG[n24] }
+    r = RIX[rk]
+    RI[r] += NI[n24]; RDD[r] += ND[n24]
+    for (t = 1; t <= nt; t++)
+      if (((n24, t) in NT) && !((r, t) in ROWT)) { ROWT[r, t] = 1; RTC[r]++; RTN[r] = RTN[r] (RTN[r] == "" ? "" : "、") TN[t] }
+  }
+  deadnets = ""
+  for (r = 1; r <= nrow; r++) if (RSIG[r] == "dead") deadnets = deadnets (deadnets == "" ? "" : "、") RLAB[r]
 }
 # 分区标题：── 标题（说明）─────
 function sec(title, note, n, i, rule) {
@@ -1737,7 +1924,11 @@ FILENAME == F_TARGETS {
   if ($14 == "mixed") nmixed++
   if (BI[nt]) nbyip++
   if ($17 == "partial") { npart++; part = part (part == "" ? "" : "、") $2 }
-  if ($17 == "dead") { nalldead++; alldead = alldead (alldead == "" ? "" : "、") $2 }
+  if ($17 == "dead") {
+    nalldead++; alldead = alldead (alldead == "" ? "" : "、") $2
+    # judge 也把它算进“解析失败或连不上”，结论里不重复说
+    if ($4 == "-" && ($5 == "dns" || $5 == "noconn")) ndeadover++
+  }
   if (BI[nt] || $17 == "partial" || $17 == "dead") nipshow++
   # 靠路由推断到各个出口的目标数，一个目标只算一次
   if ($5 == "inferred") INFT[$4]++
@@ -1752,7 +1943,9 @@ FILENAME == F_ENV { ENVV[$1] = $2; next }
 FILENAME == F_DETAIL { ndt++; DL[ndt] = $0; next }
 
 END {
-  print B "splitcheck " ENVV["version"] R "  " ENVV["host"] "  " ENVV["time"] DIM "  用时 " ENVV["elapsed"] " 秒" R
+  # 抬头：一个框，框宽随内容，至少和分区标题一样宽
+  p1 = "splitcheck " ENVV["version"] "  " ENVV["host"] "  " ENVV["time"] "  用时 " ENVV["elapsed"] " 秒"
+  c1 = B "splitcheck " ENVV["version"] R "  " ENVV["host"] "  " ENVV["time"] DIM "  用时 " ENVV["elapsed"] " 秒" R
   line = nt " 个目标"
   if (ENVV["region"] != "none") line = line " · 地区 " ENVV["region"]
   if (ENVV["proxy"] != "-") line = line " · 经代理 " ENVV["proxy"]
@@ -1760,8 +1953,13 @@ END {
     line = line " · 路由探测 " (ENVV["tracer"] == "none" ? "无" : ENVV["tracer"])
     if ("resolver" in ENVV) line = line " · 系统 DNS " ENVV["resolver"]
   }
-  print DIM line R
+  bw = dwidth(p1); if (dwidth(line) > bw) bw = dwidth(line); if (bw < 62) bw = 62
+  print CYN "╭" rep("─", bw + 4) "╮" R
+  print CYN "│" R "  " c1 spc(bw - dwidth(p1)) "  " CYN "│" R
+  print CYN "│" R "  " DIM line R spc(bw - dwidth(line)) "  " CYN "│" R
+  print CYN "╰" rep("─", bw + 4) "╯" R
   print ""
+  nets()
 
   # 结论。判断在 judge 里做，这里只管怎么说
   V = ENVV["verdict"]
@@ -1774,55 +1972,67 @@ END {
   if (XORG[1] != "-")
     for (j = 2; j <= nx; j++) if (XORG[j] != "-" && asn(XORG[j]) != asn(XORG[1])) nother++
   if (V == "split") {
-    line = "有分流，发现 " nx " 个出口"
-    if (nother > 0) line = line "，其中 " nother " 个不是默认运营商"
-    else if (norg == 0) line = line "，都属于默认运营商"
-    else line = line "，运营商信息没查全"
-    print B "结论" R "  " RED line R
+    VC = RED
+    head = "有分流，发现 " nx " 个出口"
+    if (nother > 0) head = head "，其中 " nother " 个不是默认运营商"
+    else if (norg == 0) head = head "，都属于默认运营商"
+    else head = head "，运营商信息没查全"
   } else if (V == "dns_tampered") {
-    print B "结论" R "  " YEL "出口没有分流，都从 " XI[1] " 出去，但 DNS 被动了手脚" R
+    VC = YEL
+    head = "出口没有分流，都从 " XI[1] " 出去，但 DNS 被动了手脚"
   } else if (V == "blocked") {
-    print B "结论" R "  " YEL "出口没有分流，都从 " XI[1] " 出去，但有目标的部分 IP 连不上，像是被按 IP 拦截" R
+    VC = YEL
+    head = "出口没有分流，都从 " XI[1] " 出去，但有目标的部分 IP 连不上，像是被按 IP 拦截"
   } else if (V == "inconclusive") {
     # 证据不足不等于没有分流
-    print B "结论" R "  " YEL "没发现第二个出口，能确认的目标都从 " XI[1] " 出去，但 " nopen "/" nt " 个目标证据不足，不能排除分流" R
+    VC = YEL
+    head = "没发现第二个出口，能确认的目标都从 " XI[1] " 出去，但 " nopen "/" nt " 个目标证据不足，不能排除分流"
   } else {
-    print B "结论" R "  " GRN "未发现分流，能确认的目标都从 " XI[1] " 出去" R
+    VC = GRN
+    head = "未发现分流，能确认的目标都从 " XI[1] " 出去"
   }
+  print "  " VC "┃" R " " B "结论" R "  " VC B head R
   if (ENVV["dns_hijack"] == 1)
-    print "      53 端口被上游劫持：发给任何解析器的明文查询都由它应答，换公共 DNS 没用，要用 DoH/DoT"
+    cnote("!", YEL, "53 端口被上游劫持：明文查询都由它应答，换公共 DNS 没用，要用 DoH/DoT")
   if (nblock > 0)
-    print "      " RED nblock " 个目标被 DNS 屏蔽" R "：系统 DNS 解析成 0.0.0.0 或查不到，加密 DNS 能拿到真实地址"
-  if (nfake > 0)
-    print "      " YEL nfake " 个目标的系统 DNS 返回 fake-ip（198.18.x.x）" R "：有透明代理接管了解析，系统 DNS 这一轮测不到真实出口。要测线路本身先关掉它，要测它的分流用 -x 指向它的本地端口"
+    cnote("✗", RED, RED nblock " 个目标被 DNS 屏蔽" R "：系统 DNS 给的是 0.0.0.0 或查不到，加密 DNS 能拿到真实地址")
+  if (nfake > 0) {
+    cnote("!", YEL, YEL nfake " 个目标的系统 DNS 返回 fake-ip（198.18.x.x）" R "：有透明代理接管了解析")
+    more("系统 DNS 这一轮测不到真实出口。要测线路本身先关掉它，要测它的分流用 -x 指向它的本地端口")
+  }
   if (nun > 0) {
     line = ""
     for (i = 1; i <= nun; i++) line = line (i > 1 ? "、" : "") UE[i] "（" UN[i] "）"
-    print "      " YEL nun " 个出口只出现过 1 次，复测时同一个目标、同一个 IP 看到的成了别的出口" R "，按偶发处理，没有算进结论：" line
+    cnote("!", YEL, YEL nun " 个出口只出现过 1 次" R "：复测时同一个目标、同一个 IP 看到的是别的出口，按偶发处理，没有算进结论")
+    more(line)
   }
+  if (npart > 0) {
+    cnote("✗", RED, YEL npart " 个目标有部分 IP 连不上" R "：同一域名的其他 IP 正常，可能是上游按 IP 拦截")
+    if (deadnets != "") more("连不上的网段：" clip(deadnets, 56, 1))
+  }
+  if (nbyip > 0) cnote("!", MAG, nbyip " 个目标按 IP 分流：同一个域名的几个 IP 走了不同出口，只测一个 IP 会漏掉")
+  if (ndns > 0) cnote("!", YEL, ndns " 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流")
+  if (nstatic > 0) cnote("!", MAG, nstatic " 个目标在分流名单内：加密 DNS 下也走分流")
+  if (nsplit > 0) cnote("!", YEL, nsplit " 个目标走了非默认出口")
+  if (nmixed > 0) cnote("·", "", nmixed " 个目标系统 DNS 走默认出口、加密 DNS 反而走分流，通常是解析到的 IP 不同")
   if (nx >= 2) {
     same24 = 1
     pre = XI[1]; sub(/\.[0-9]+$/, ".", pre)
     for (j = 2; j <= nx; j++) if (index(XI[j], pre) != 1) same24 = 0
-    if (same24) print "      " DIM "这些出口在同一个 /24，也可能是运营商的出口池轮换，不一定是分流" R
+    if (same24) cnote("·", DIM, DIM "这些出口在同一个 /24，也可能是运营商的出口池轮换，不一定是分流" R)
     # 只回显过一次的出口，若另有至少 2 个目标的路由走它那条线路（推断到它），就算有旁证：
     # 偶发的读数和默认出口同一条线路，推断不会落到它上面
     once = 0
     for (j = 2; j <= nx; j++) if (XS[j] + 0 <= 1 && INFT[XI[j]] + 0 < 2) once++
-    if (once > 0) print "      " DIM once " 个出口只回显过 1 次，复测没能确认，可能是误报，看明细确认" R
+    if (once > 0) cnote("·", DIM, DIM once " 个出口只回显过 1 次，复测没能确认，可能是误报，看明细确认" R)
   }
-  if (npart > 0)
-    print "      " YEL npart " 个目标有部分 IP 连不上，复测两次仍不通，同一个域名的其他 IP 正常" R "：可能是上游按 IP 拦截，" part
-  if (nbyip > 0) print "      " nbyip " 个目标按 IP 分流：同一个域名解析出的几个 IP 走了不同出口，只测一个 IP 会漏掉"
-  if (ndns > 0) print "      " ndns " 个目标由明文 DNS 触发：加密 DNS 下走默认出口，系统 DNS 下走分流"
-  if (nstatic > 0) print "      " nstatic " 个目标在分流名单内：加密 DNS 下也走分流"
-  if (nsplit > 0) print "      " nsplit " 个目标走了非默认出口"
-  if (nmixed > 0) print "      " nmixed " 个目标系统 DNS 走默认出口、加密 DNS 反而走分流，通常是解析到的 IP 不同"
-  if (nunk > 0) print "      " DIM nunk " 个目标无法确认出口" R
-  if (nweak > 0) print "      " DIM nweak " 个目标只有弱推断：路由在内网段就和校准线路分开了，可能走了没发现的出口" R
-  if (ndead > 0) print "      " DIM ndead " 个目标解析失败或连不上，不影响结论" R
-  if (nalldead > 0)
-    print "      " DIM alldead " 的 IP 复测两次全都连不上：从这里分不清是目标挂了还是被按 IP 拦截，换个网络打开看看" R
+  if (nalldead > 0) {
+    cnote("?", DIM, DIM nalldead " 个目标的 IP 复测两次全都连不上：分不清是目标挂了还是被拦截，换个网络试试" R)
+    more(clip(alldead, 60, 1))
+  }
+  if (nunk > 0) cnote("·", DIM, DIM nunk " 个目标无法确认出口" R)
+  if (nweak > 0) cnote("·", DIM, DIM nweak " 个目标只有弱推断：路由在内网段就和校准线路分开了，可能走了没发现的出口" R)
+  if (ndead - ndeadover > 0) cnote("·", DIM, DIM (ndead - ndeadover) " 个目标解析失败或连不上，不影响结论" R)
   print ""
 
   # 出口
@@ -1844,34 +2054,33 @@ END {
   print ""
 
   # 分类概览
-  sec("分类概览", "目标数")
-  w = (nx + 1) * 4 + (nblock > 0 ? 5 : 0)
+  # 每格一个目标；分类很大时按比例缩到 24 格以内
+  sec("分类概览", "每格一个目标")
   PH = (ENVV["proxy"] != "-") ? "节点 DNS" : "系统 DNS"
-  print "  " pad("", 10) pad(" " PH, w) (HASE ? "   " pad(" 加密 DNS", w) : "")
-  line = "  " pad("", 10)
-  for (j = 1; j <= nx; j++) line = line lc(XL[j], sprintf("%4s", XL[j]))
-  line = line DIM sprintf("%4s", "?") R
-  if (nblock > 0) line = line RED " 屏蔽" R
-  if (HASE) {
-    line = line "   "
-    for (j = 1; j <= nx; j++) line = line lc(XL[j], sprintf("%4s", XL[j]))
-    line = line DIM sprintf("%4s", "?") R
-  }
-  print line
+  maxc = 0
+  for (c = 1; c <= nc; c++) if ((CO[c] in CCOUNT) && CCOUNT[CO[c]] > maxc) maxc = CCOUNT[CO[c]]
+  BSCALE = (maxc > 24) ? 24 / maxc : 1
+  BW = 0; ncr = 0
   for (c = 1; c <= nc; c++) {
     k = CO[c]
     if (!(k in CCOUNT)) continue
-    line = "  " pad(CL[k], 10)
-    for (j = 1; j <= nx; j++) { v = MP[k, XL[j]] + 0; line = line (v ? lc(XL[j], sprintf("%4d", v)) : DIM sprintf("%4s", ".") R) }
-    v = MP[k, "?"] + 0; line = line DIM sprintf("%4s", v ? v : ".") R
-    if (nblock > 0) { v = MP[k, "X"] + 0; line = line (v ? RED sprintf("%5d", v) R : DIM sprintf("%5s", ".") R) }
-    if (HASE) {
-      line = line "   "
-      for (j = 1; j <= nx; j++) { v = ME[k, XL[j]] + 0; line = line (v ? lc(XL[j], sprintf("%4d", v)) : DIM sprintf("%4s", ".") R) }
-      v = ME[k, "?"] + 0; line = line DIM sprintf("%4s", v ? v : ".") R
-    }
+    ncr++; CRK[ncr] = k
+    BART = 0; CBP[ncr] = bar(k, 0); CWP[ncr] = BARW; CTP[ncr] = BART
+    if (BARW > BW) BW = BARW
+    if (HASE) { BART = 0; CBE[ncr] = bar(k, 1); CWE[ncr] = BARW; CTE[ncr] = BART; if (BARW > BW) BW = BARW }
+  }
+  if (BW < 8) BW = 8
+  print DIM "  " pad("", 10) pad(PH, BW + 4) (HASE ? "    加密 DNS" : "") R
+  for (i = 1; i <= ncr; i++) {
+    line = "  " pad(CL[CRK[i]], 10) CBP[i] spc(BW - CWP[i]) DIM sprintf("%4d", CTP[i]) R
+    if (HASE) line = line "    " CBE[i] spc(BW - CWE[i]) DIM (CTE[i] ? sprintf("%4d", CTE[i]) : "   -") R
     print line
   }
+  line = ""
+  for (j = 1; j <= nx; j++) line = line lc(XL[j], glyph(XL[j])) " " XL[j] "   "
+  line = line DIM glyph("?") " 未知" R
+  if (nblock > 0) line = line "   " RED glyph("X") R " 被 DNS 屏蔽"
+  print "  " pad("", 10) line
   print ""
 
   # 明文 DNS 触发测试
@@ -1902,9 +2111,9 @@ END {
 
   # 明细
   if (!BRIEF) {
-    head = "  " pad("目标", 36) pad(PH, 21) pad("轮次", 6)
+    head = "  " pad("目标", 36) pad(PH, 14) pad("轮次", 6)
     if (HASE) head = head pad("加密", 6)
-    sec("明细")
+    sec("明细", "出口用上面的字母")
     print DIM head "证据" R
     for (c = 1; c <= nc; c++) {
       k = CO[c]
@@ -1912,8 +2121,8 @@ END {
       print "  " B CL[k] R
       for (t = 1; t <= nt; t++) {
         if (TC[t] != k) continue
-        v = (PL[t] == "X") ? "X 被 DNS 屏蔽" : PL[t] " " (PX[t] == "-" ? "" : PX[t])
-        line = "    " pad(TN[t], 34) lc(PL[t], pad(v, 21)) pad(PX[t] == "-" ? "" : PA[t] "/" PT[t], 6)
+        v = (PL[t] == "X") ? "× 被 DNS 屏蔽" : PL[t]
+        line = "    " pad(TN[t], 34) lc(PL[t], pad(v, 14)) pad(PX[t] == "-" ? "" : PA[t] "/" PT[t], 6)
         if (HASE) line = line lc(EL[t], pad(EL[t], 6))
         line = line evid(PE[t], PM[t])
         if (PO[t] != "-") { o = PO[t]; gsub(/:/, "×", o); line = line DIM "  另 " o R }
@@ -1928,9 +2137,28 @@ END {
     print ""
   }
 
-  # 逐 IP：只列各个 IP 结果不一样、或者有 IP 连不上的目标
-  if (!BRIEF && nipshow > 0) {
-    sec("逐 IP", "各个 IP 结果不一样或连不上的目标")
+  # 逐 IP：只看各个 IP 结果不一样、或者有 IP 连不上的目标，按网段汇总。连不上的排前面
+  if (nrow > 0) {
+    sec("逐 IP", "按网段汇总，复测两次都不通才算连不上")
+    print DIM "  " pad("网段", 20) pad("结果", 16) "目标" R
+    for (pass = 1; pass <= 3; pass++)
+      for (r = 1; r <= nrow; r++) {
+        s = RSIG[r]
+        if ((pass == 1) != (s == "dead") || (pass == 2) != (s ~ /^part/)) continue
+        lets = s; sub(/^[a-z]*:?/, "", lets)
+        cl = ""
+        if (lets != "") { m = split(lets, la, "/"); for (j = 1; j <= m; j++) cl = cl (j > 1 ? "/" : "") lc(la[j], la[j]) }
+        if (s == "dead") res = RED pad("✗ 连不上", 16) R
+        else if (pass == 2) res = YEL "! " RDD[r] "/" RI[r] " 不通" R (lets != "" ? " " cl : "") spc(16 - dwidth("! " RDD[r] "/" RI[r] " 不通" (lets != "" ? " " lets : "")))
+        else if (lets == "") res = GRN "✓" R DIM " 出口未知" R spc(16 - dwidth("✓ 出口未知"))
+        else res = GRN "✓" R " " cl spc(16 - dwidth("✓ " lets))
+        print "  " pad(RLAB[r], 20) res DIM sprintf("%2d", RTC[r]) " 个" R "  " clip(RTN[r], 36, 0)
+      }
+    print ""
+  }
+  # 每个目标每个 IP 的结果，-v 时才列
+  if (VERBOSE && nipshow > 0) {
+    sec("逐 IP 明细")
     for (t = 1; t <= nt; t++) {
       if (!(BI[t] || RCH[t] == "partial" || RCH[t] == "dead")) continue
       m = split(IPM[t], ipa, " ")
@@ -1946,7 +2174,7 @@ END {
   }
 
   # 其他检查
-  has_other = nsn > 0 || nq > 0 || ("route_defaults" in ENVV) || ("ipv6" in ENVV) || (ENVV["tracer"] == "none" && ENVV["use_route"] == 1)
+  has_other = nsn > 0 || nq > 0 || ("dns_hijack" in ENVV) || ("route_defaults" in ENVV) || ("ipv6" in ENVV) || (ENVV["tracer"] == "none" && ENVV["use_route"] == 1)
   if (has_other) sec("其他检查")
   if (nsn > 0) {
     # 回显服务不看 SNI，谁来问都照常应答。出口变了，是上游按 SNI 换了线路；有应答却不是回显，
@@ -2005,17 +2233,24 @@ END {
     print ""
   }
 
-  print DIM "直接：目标或同一 IP 上的 CDN 回显的访问者 IP。推断：路由和已校准出口的线路相同，没有直接证据。" R
-  print DIM "弱推断：只有一个出口可比，目标又在内网段就分开了，可信度低。" R
-  if (nipshow > 0)
-    print DIM "加密 DNS 那一轮把 Google 和 Cloudflare 的应答合起来，每个 /24 测一个 IP；系统 DNS 每轮测一个。" R
-  if (ndns + nstatic > 0) {
-    print DIM "DNS触发：这个目标解析到的 IP 只有经明文查询才会进分流名单。名单内：解析到的 IP 已在名单里，" R
-    print DIM "可能是静态名单，也可能是被其他明文查询写进去的；上面的触发测试能看出上游是否按 DNS 写名单。" R
+  # 说明：一个词一行，不再是几行长句
+  sec("说明")
+  term("直接", "目标或同一 IP 上的 CDN 回显的访问者 IP")
+  term("推断", "路由和已校准出口的线路相同，没有直接证据")
+  term("弱推断", "只有一个出口可比，目标又在内网段就分开了，可信度低")
+  if (nipshow > 0) {
+    term("逐 IP", "加密 DNS 合并 Google 和 Cloudflare 的应答，每个 /24 测一个 IP；系统 DNS 每轮测一个")
+    if (!VERBOSE) term("", "上面按网段汇总，每个目标每个 IP 的结果用 -v 或 -j 查看")
   }
-  if (ENVV["proxy"] != "-") print DIM "经代理时只有回显证据，不回显的目标显示未知。" R
-  else print DIM "这里测的是上游这一层。节点上的 xray/sing-box 可能另有路由规则，要检查这一层请用 -x 经节点测。" R
+  if (ndns + nstatic > 0) {
+    term("DNS触发", "这个目标解析到的 IP 只有经明文查询才会进分流名单")
+    term("名单内", "解析到的 IP 已在名单里，可能是静态名单，也可能是被其他明文查询写进去的")
+    term("", "上面的触发测试能看出上游是否按 DNS 写名单")
+  }
+  if (ENVV["proxy"] != "-") term("经代理", "只有回显证据，不回显的目标显示未知")
+  else term("测的范围", "上游这一层。节点上的 xray/sing-box 可能另有路由规则，要检查这一层请用 -x 经节点测")
 }
+function term(w, s) { print "  " pad(w, 10) DIM s R }
 AWK
   touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv"
   awk -v R="$R" -v B="$B" -v DIM="$DIM" -v GRN="$GRN" -v YEL="$YEL" -v MAG="$MAG" -v CYN="$CYN" -v RED="$RED" \
@@ -2333,6 +2568,8 @@ main() {
     show_menu
   fi
   (( LOW_RESOURCE )) && low_resource
+  # 菜单选完才知道要不要路由工具和 dig
+  install_deps
   WORK=$(mktemp -d "${TMPDIR:-/tmp}/splitcheck.XXXXXX") || die "建不了临时目录"
   trap cleanup EXIT
   trap 'exit 130' INT
@@ -2358,8 +2595,8 @@ main() {
   detect_tracer
   local count est eta route=$TRACER
   count=$(ui_lines "$WORK/targets.txt")
-  # 加密 DNS 那一轮每个目标平均要测两个左右的 IP
-  est=$(( count * (ROUNDS + USE_DNS_TEST * 2) * 3 / PARALLEL + 15 ))
+  # 加密 DNS 那一轮每个目标平均要测两个左右的 IP，连不上的还要复测；按 HiNet、Seednet 实测的用时定的系数
+  est=$(( count * (ROUNDS + USE_DNS_TEST * 2) * 4 / PARALLEL + 15 ))
   eta="$est 秒"
   (( est >= 90 )) && eta="$(( (est + 30) / 60 )) 分钟"
   [[ $route != none ]] || route=无
