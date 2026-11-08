@@ -26,12 +26,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build bash 4.2
         # bash 4.2 是 K&R 写法，GCC 15 默认按 C23 编译，`void f()` 成了无参函数，编不过。
-        # 按 gnu89 编；-fpermissive 把 GCC 14 起默认报错的旧写法降回警告
+        # 按 gnu89 编；-fpermissive 把 GCC 14 起默认报错的旧写法降回警告。参数要放进 CC：
+        # mkbuiltins 这些编译时先跑的小程序用 CC_FOR_BUILD 和 CFLAGS_FOR_BUILD，不读 CFLAGS
         run: |
           curl -fsSL https://ftp.gnu.org/gnu/bash/bash-4.2.tar.gz -o /tmp/bash.tgz
           tar -xzf /tmp/bash.tgz -C /tmp
           cd /tmp/bash-4.2
-          CFLAGS='-O2 -std=gnu89 -fcommon -fpermissive' ./configure --without-bash-malloc >/dev/null
+          CC='gcc -std=gnu89 -fcommon -fpermissive' CFLAGS='-O2' ./configure --without-bash-malloc >/dev/null
           make -j2 >/dev/null
       - run: TEST_BASH=/tmp/bash-4.2/bash python3 tests/test_regression.py
   alpine:
