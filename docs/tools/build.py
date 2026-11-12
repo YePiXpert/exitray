@@ -1,11 +1,11 @@
-"""重新生成 README 的配图，并核对 README 里的文本样例。
+"""重新生成文档的配图，并核对 README 和 docs/guide.md 里的文本样例。
 
 配图都出自脚本自己的输出：用 fixtures.py 造的夹具跑脚本里真实的 analyze、judge 和报告函数，
 菜单和进度用真实的界面函数画，再把带颜色的终端输出画成 SVG。夹具里的出口都是文档保留地址。
 
 用法（在仓库根目录）：
-  python docs/tools/build.py           重新生成 docs/*.svg，再核对 README
-  python docs/tools/build.py --check   不写文件，只检查配图和 README 的文本样例是不是跟脚本的输出一致
+  python docs/tools/build.py           重新生成 docs/*.svg，再核对文本样例
+  python docs/tools/build.py --check   不写文件，只检查配图和文本样例是不是跟脚本的输出一致
 
 和测试一样，TEST_BASH 可以指定 bash（Windows 上指到 Git 自带的 usr\\bin\\bash.exe），TEST_AWK 可以指定 awk。
 """
@@ -26,7 +26,8 @@ import term2svg  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'splitcheck.sh'
 DOCS = ROOT / 'docs'
-README = ROOT / 'README.md'
+# 有文本样例要核对的文档
+PAGES = [ROOT / 'README.md', ROOT / 'docs' / 'guide.md']
 BASH = os.environ.get('TEST_BASH', shutil.which('bash') or 'bash')
 TEST_AWK = os.environ.get('TEST_AWK', '')
 
@@ -158,16 +159,18 @@ def images(outputs):
     return result
 
 
-def readme_problems(outputs):
-    """README 里 ```text 代码块的每一行，都要能在脚本的真实输出里找到。"""
+def sample_problems(outputs):
+    """文档里 ```text 代码块的每一行，都要能在脚本的真实输出里找到。"""
     real = set()
     for out in outputs.values():
         for key in ('plain', 'summary'):
             real.update(line.rstrip() for line in out[key].splitlines())
-    text = README.read_text(encoding='utf-8').replace('\r\n', '\n')
     missing = []
-    for block in re.findall(r'```text\n(.*?)```', text, re.S):
-        missing += [line for line in block.splitlines() if line.strip() and line.rstrip() not in real]
+    for page in PAGES:
+        text = page.read_text(encoding='utf-8').replace('\r\n', '\n')
+        for block in re.findall(r'```text\n(.*?)```', text, re.S):
+            missing += [f'{page.relative_to(ROOT).as_posix()}  |{line}' for line in block.splitlines()
+                        if line.strip() and line.rstrip() not in real]
     return missing
 
 
@@ -187,12 +190,12 @@ def main():
         else:
             path.write_text(svg, encoding='utf-8', newline='\n')
             print(f'更新 docs/{name}')
-    missing = readme_problems(outputs)
+    missing = sample_problems(outputs)
     if missing:
-        problems.append('README 里这些行在脚本的输出里找不到：\n' + '\n'.join('  |' + line for line in missing))
+        problems.append('文档里这些行在脚本的输出里找不到：\n' + '\n'.join('  ' + line for line in missing))
     if problems:
         sys.exit('\n'.join(problems))
-    print('配图和 README 的文本样例都跟脚本的输出一致')
+    print('配图和文档里的文本样例都跟脚本的输出一致')
 
 
 if __name__ == '__main__':
