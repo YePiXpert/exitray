@@ -3,12 +3,18 @@
 # 场景由 $STUB_DIR 里的文件决定，都可以不写：
 #   exit_for     每行“IP 出口”：回显服务按被钉住的 IP 报访问者 IP，default 行是默认值
 #   exit_once    一行“IP 出口”：这个 IP 头一次回显报这个出口，之后恢复正常，模拟偶发的出口
+#   exit_after   每行“IP N 出口”：这个 IP 前 N 次回显照常，之后报这个出口，模拟过一会儿才生效的名单
+#   pool         一行几个出口：每次回显轮流报其中一个，模拟出口池或多线负载均衡
 #   doh          每行“域名 IP [IP...]”：Google DoH 的应答，没写的域名解析成 8.8.4.4
 #   doh_cf       每行“域名 IP [IP...]”：Cloudflare DoH 的应答，没写的和 Google 一样
 #   doh_far      每行“域名 IP”：带外地 ECS 查询时的应答，触发测试用
 #   silent       这些 IP 不回显，也认不出是哪家 CDN
 #   dead         这些 IP 连不上
 #   flaky        每行“IP N”：这个 IP 前 N 个请求连不上，之后恢复，模拟偶发的超时
+#   badcert      这些 IP 的证书不被信任：不带 -k 的 HTTPS 请求握手失败，带 -k 的正常
+#   tlsfail      这些 IP 的 TCP 连得上，TLS 握手却总是不成
+#   hostsniff    存在时，带着 Akamai 回显的 Host 发给任何 IP 的请求都被转去 Akamai，
+#                模拟按 Host 改写目的地的透明代理。内容是这时回显的出口，不写是 7.7.7.7
 #   ipinfo_down  存在时 ipinfo.io 返回限流提示
 #   sni_exit     每行“域名 出口”：这个域名放进 SNI 后，回显服务看到的访问者 IP
 #   sni_moved    这些域名放进 SNI 后，应答的不是回显服务
@@ -16,14 +22,15 @@
 for a in "$@"; do
   [[ $a == --connect-to && ${STUB_NO_CONNECT_TO:-0} == 1 ]] && { echo "curl: option --connect-to: is unknown" >&2; exit 2; }
 done
-url='' out='' dump='' fmt='' pin='' connect='' host_header='' family='' follow=0 include=0 status=200
+url='' out='' dump='' fmt='' pin='' connect='' host_header='' family='' follow=0 include=0 insecure=0 status=200 connected=1
 while (( $# )); do
   case $1 in
     -V) echo "curl 8.5.0 stub"; exit 0 ;;
     -4|-6) family=$1; shift ;;
     -L) follow=1; shift ;;
     -i) include=1; shift ;;
-    -s|-k|-sk|-I) shift ;;
+    -k|-sk) insecure=1; shift ;;
+    -s|-I) shift ;;
     --connect-timeout|--max-time|-A|--max-redirs|-x) shift 2 ;;
     --resolve) pin=${2##*:}; shift 2 ;;
     --connect-to) connect=$2; shift 2 ;;
@@ -34,14 +41,29 @@ while (( $# )); do
     *) url=$1; shift ;;
   esac
 done
-printf '%s\tpin=%s\tconnect=%s\tfollow=%s\thost=%s\n' "$url" "$pin" "$connect" "$follow" "$host_header" >> "${STUB_LOG:-/dev/null}"
+printf '%s\tpin=%s\tconnect=%s\tfollow=%s\thost=%s\tinsecure=%s\n' "$url" "$pin" "$connect" "$follow" "$host_header" "$insecure" >> "${STUB_LOG:-/dev/null}"
 [[ $family == -6 ]] && exit 7
 
 listed() { grep -qxF "$2" "$STUB_DIR/$1" 2>/dev/null; }
 lookup() { awk -v k="$2" '$1 == k { print $2; exit }' "$STUB_DIR/$1" 2>/dev/null; }
 lookup_all() { awk -v k="$2" '$1 == k { for (i = 2; i <= NF; i++) print $i; exit }' "$STUB_DIR/$1" 2>/dev/null; }
 exit_of() {
-  local r
+  local r n
+  # 出口池：每次回显轮到下一个
+  if [[ -s $STUB_DIR/pool ]]; then
+    echo >> "$STUB_DIR/pool.hits"
+    n=$(wc -l < "$STUB_DIR/pool.hits")
+    awk -v n="$n" '{ print $((n - 1) % NF + 1); exit }' "$STUB_DIR/pool"
+    return
+  fi
+  r=$(awk -v k="$1" '$1 == k { print $2, $3; exit }' "$STUB_DIR/exit_after" 2>/dev/null)
+  if [[ -n $r ]]; then
+    echo >> "$STUB_DIR/echoes.$1"
+    if (( $(wc -l < "$STUB_DIR/echoes.$1") > ${r% *} )); then
+      printf '%s' "${r#* }"
+      return
+    fi
+  fi
   r=$(lookup exit_once "$1")
   # mv 是原子的，并发的请求里只有一个能用掉这一次
   if [[ -n $r ]] && mv "$STUB_DIR/exit_once" "$STUB_DIR/exit_once.used" 2>/dev/null; then
@@ -58,13 +80,14 @@ body() {
   (( include )) && text=$(printf 'HTTP/1.1 %s X\r\n\r\n%s' "$status" "$1")
   if [[ -n $out ]]; then printf '%s' "$text" > "$out"; else printf '%s' "$text"; fi
 }
-# 真的 curl 把 -w 的内容写在最后
+# 真的 curl 把 -w 的内容写在最后。TCP 没连上时 time_connect 是 0
 finish() {
   if [[ -n $fmt ]]; then
-    case $fmt in
-      *time_connect*) if [[ $status == 000 ]]; then printf '0.000000'; else printf '0.012000'; fi ;;
-      *) printf '%s' "$status" ;;
-    esac
+    local t=0.012000 text=$fmt
+    (( connected )) || t=0.000000
+    text=${text//'%{http_code}'/$status}
+    text=${text//'%{time_connect}'/$t}
+    printf '%s' "$text"
   fi
   exit "${1:-0}"
 }
@@ -93,11 +116,24 @@ unreachable() {
   echo >> "$STUB_DIR/hits.$target"
   (( $(wc -l < "$STUB_DIR/hits.$target") <= n ))
 }
-if unreachable; then status=000; finish 7; fi
+if unreachable; then status=000 connected=0; finish 7; fi
+# TCP 连上了，握手不成：证书不被信任（不带 -k 才会失败），或者握手总是被掐断
+if [[ $url == https://* && -n $target ]]; then
+  if listed tlsfail "$target"; then status=000; finish 35; fi
+  if (( ! insecure )) && listed badcert "$target"; then status=000; finish 60; fi
+fi
+
+# 按 Host 改写目的地的透明代理：不管连的是哪个 IP，请求都到了 Akamai 的回显
+if [[ $url == http://* && $host_header == whatismyip.akamai.com && -e $STUB_DIR/hostsniff ]]; then
+  alt=$(head -1 "$STUB_DIR/hostsniff")
+  [[ -z $dump ]] || printf 'HTTP/1.1 200 OK\r\nServer: AkamaiGHost\r\n\r\n' > "$dump"
+  body "${alt:-7.7.7.7}"
+  finish
+fi
 
 # SNI 嗅探测试：请求发给回显服务的 IP，SNI 却是别的域名
 if [[ $host_header == ipinfo.io && $host != ipinfo.io ]]; then
-  if listed sni_dead "$host"; then status=000; finish 7; fi
+  if listed sni_dead "$host"; then status=000 connected=0; finish 7; fi
   if listed sni_moved "$host"; then status=404; body '<html>not the echo service</html>'; finish; fi
   alt=$(lookup sni_exit "$host")
   body "${alt:-$(exit_of "$pin")}"
@@ -136,7 +172,7 @@ case $url in
     ;;
   http://*)
     # 认 CDN 的指纹请求。这里所有 IP 都装成 Cloudflare，silent 里的除外
-    if listed silent "$host"; then
+    if listed silent "${host%%:*}"; then
       status=400
       [[ -z $dump ]] || printf 'HTTP/1.1 400 Bad Request\r\nServer: nginx\r\n\r\n' > "$dump"
       body 'bad request'
