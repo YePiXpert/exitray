@@ -759,11 +759,15 @@ low_resource() {
 # 连子进程一起结束，退出后不留下继续跑的 curl 和 mtr
 stop_tree() {
   local child children
+  # 先让它停住再列子进程：停住的进程不会再派生新进程。否则列完之后才起的子进程（比如正要
+  # 跑的 mtr）不在名单上，脚本退出后还挂着
+  kill -STOP "$1" 2>/dev/null
   children=$({ ps -eo pid=,ppid= 2>/dev/null || ps -o pid,ppid 2>/dev/null; } | awk -v p="$1" '$2 == p { print $1 }')
-  kill "$1" 2>/dev/null
   for child in $children; do
     stop_tree "$child"
   done
+  kill "$1" 2>/dev/null
+  kill -CONT "$1" 2>/dev/null
 }
 
 cleanup() {
