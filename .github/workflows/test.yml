@@ -19,6 +19,9 @@ jobs:
         run: TEST_AWK=mawk python3 tests/test_regression.py
       - name: BusyBox awk
         run: TEST_AWK='busybox awk' python3 tests/test_regression.py
+      - name: README images
+        # 配图和 README 里的文本样例要跟脚本现在的输出一致；不一致就运行 docs/tools/build.py 重新生成
+        run: TEST_AWK=gawk python3 docs/tools/build.py --check
   bash-4-2:
     # 没有 wait -n 的旧 bash，走轮询空位那条路
     runs-on: ubuntu-latest

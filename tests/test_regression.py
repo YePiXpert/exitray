@@ -75,6 +75,14 @@ class HelperTests(unittest.TestCase):
                           ('1.2.3', False), ('example.com', False), ('', False)]:
             self.assertEqual(shell(f"is_public_ipv4 '{value}'").returncode == 0, ok, value)
 
+    def test_color_depth(self):
+        for setting, env, depth in (('2', {}, '256'), ('0', {}, '0'), ('1', {'TERM': 'xterm-256color'}, '0')):
+            # 标准输出是管道：没加 --color 就不上色
+            result = shell(f'USE_COLOR={setting}; color_depth 1; echo "$COLOR_DEPTH"', env=env)
+            self.assertEqual(result.stdout.strip(), depth, setting)
+        # 结果必须写进变量：$(color_depth 1) 里的标准输出是管道，在真终端里也会判成不上色
+        self.assertNotRegex(SCRIPT.read_text(encoding='utf-8'), r'\$\(\s*color_depth')
+
     def test_extract(self):
         cases = [
             ('plain', ' 8.8.8.8\r\n', '8.8.8.8'),
@@ -1651,11 +1659,17 @@ class IntegrationTests(unittest.TestCase):
     def test_all_output_modes_run(self):
         self.state_file('sysdns', 'a.example 2.2.2.2\n')
         self.state_file('exit_for', 'default 8.8.8.8\n2.2.2.2 9.9.9.9\n')
-        for args, needle in ((['-b'], '结论'), (['-v'], '每轮明细'), (['-m'], '# 分流检测报告'),
-                             (['--no-mask', '-m'], '8.8.8.8')):
+        for args, needle in ((['-b'], '每格一个目标'), (['-v'], '每轮明细'), (['-m'], '# 分流检测报告'),
+                             (['--no-mask', '-m'], '8.8.8.8'), (['-s'], '结论：'), (['--summary'], '证据：')):
             result = self.run_script(*self.common(), *args)
             self.assertEqual(result.returncode, 0, (args, result.stderr))
             self.assertIn(needle, result.stdout, args)
+        # 默认的文字报告到“说明”就结束，摘要和 Markdown 只在加了 -s、-m 时输出
+        result = self.run_script(*self.common())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('说明', result.stdout)
+        for needle in ('分享摘要', 'splitcheck 分流检测 ·', 'Markdown', 'report.md'):
+            self.assertNotIn(needle, result.stdout + result.stderr)
 
     def test_low_resource_flag(self):
         self.state_file('exit_for', 'default 8.8.8.8\n')
@@ -1671,9 +1685,11 @@ class IntegrationTests(unittest.TestCase):
         self.state_file('exit_for', 'default 8.8.8.8\n')
         # 校准时有一次回显报了另一个出口，这样带界面的复测步骤也会跑到
         self.state_file('exit_once', '8.8.4.4 9.9.9.9\n')
+        env = self.env(TERM='xterm-256color')
+        env.pop('NO_COLOR', None)
         pid, fd = pty.fork()
         if pid == 0:  # 子进程：有控制终端，走菜单分支，测的是内置的完整清单
-            os.execve(BASH, [BASH, str(SCRIPT)], self.env())
+            os.execve(BASH, [BASH, str(SCRIPT)], env)
         seen, answered = b'', set()
         deadline = time.time() + 150
         try:
@@ -1690,9 +1706,6 @@ class IntegrationTests(unittest.TestCase):
                 if '请输入 [默认 1]'.encode() in seen and 'menu' not in answered:
                     os.write(fd, b'7\n')  # 低压力检测
                     answered.add('menu')
-                if 'Markdown 报告，方便'.encode() in seen and 'md' not in answered:
-                    os.write(fd, b'n\n')
-                    answered.add('md')
             _, status = os.waitpid(pid, 0)
         finally:
             os.close(fd)
@@ -1705,6 +1718,13 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn('未发现分流', text)
         self.assertIn('1 个出口只出现过 1 次', text)
         self.assertIn('\x1b[?25h', text)  # 退出时恢复光标
+        # 标准输出是终端，报告本身也要上色：结论是色块，不是纯文本的【无分流】
+        self.assertIn('\x1b[48;5;78m', text)
+        self.assertNotIn('【无分流】', text)
+        # 报告到“说明”就结束，不再附分享摘要，也不再问要不要 Markdown
+        self.assertIn('说明', text)
+        self.assertNotIn('分享摘要', text)
+        self.assertNotIn('Markdown', text)
         self.assertNotIn('command not found', text)
         self.assertNotIn('syntax error', text)
         self.assertTrue(self.nice_log.exists(), '菜单选了低压力检测，路由探测却没降优先级')

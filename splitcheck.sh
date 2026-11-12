@@ -30,7 +30,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="2.0.0"
+VERSION="2.1.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
@@ -51,6 +51,7 @@ USE_SNIFF=1
 INSTALL=1
 JSON=0
 MARKDOWN=0
+SUMMARY=0
 MASK=1
 BRIEF=0
 VERBOSE=0
@@ -111,7 +112,8 @@ usage() {
   -v, --verbose         明细列出全部目标，外加每一轮和每个 IP 的结果、路径和证据
   -j, --json            输出 JSON
   -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
-      --no-mask         分享摘要和 Markdown 里显示完整 IP
+  -s, --summary         只输出十几行可直接复制的摘要，IP 默认打码
+      --no-mask         -s 和 -m 的输出里显示完整 IP
       --exit-code       用退出码表示结论，方便 cron 和监控（见下）
   -y, --yes             不显示启动菜单，直接测全部分类
       --color           输出不是终端时也用颜色，例如接 less -R 或 tee
@@ -406,27 +408,35 @@ LOGO=('┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬�
 BAR_ON='━━━━━━━━━━━━━━━━━━━━━━━━'
 BAR_OFF='────────────────────────'
 
-# 颜色深度：0 不用颜色，8 基本色，256。$1 是要写的文件描述符
+# 颜色深度，结果写进 COLOR_DEPTH：0 不用颜色，8 基本色，256。$1 是要写的文件描述符。
+# 要直接调用，不能放进命令替换：命令替换里的标准输出是管道，永远判成不是终端
 color_depth() {
+  COLOR_DEPTH=0
   case $USE_COLOR in
-    0) printf 0; return 0 ;;
-    2) printf 256; return 0 ;;
+    0) return 0 ;;
+    2) COLOR_DEPTH=256; return 0 ;;
   esac
-  [[ -t $1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]] || { printf 0; return 0; }
+  [[ -t $1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]] || return 0
   if [[ -n ${COLORTERM:-} || ${TERM:-} == *256color* || ${TERM:-} == *-direct* || ${TERM:-} == xterm-kitty ||
     ${TERM:-} == alacritty || ${TERM:-} == foot* || ${TERM:-} == wezterm ]]; then
-    printf 256
+    COLOR_DEPTH=256
   elif command -v tput >/dev/null 2>&1 && [[ $(tput colors 2>/dev/null) -ge 256 ]]; then
-    printf 256
+    COLOR_DEPTH=256
   else
-    printf 8
+    COLOR_DEPTH=8
   fi
 }
 
 ui_setup() {
-  UI_DEPTH=$(color_depth 2)
+  color_depth 2
+  UI_DEPTH=$COLOR_DEPTH
   [[ -t 2 ]] || return 0
   UI=1
+  ui_colors
+}
+
+# 界面用的颜色，按 UI_DEPTH 选
+ui_colors() {
   case $UI_DEPTH in
     256)
       U_R=$'\033[0m'; U_B=$'\033[1m'; U_D=$'\033[38;5;245m'; U_F=$'\033[38;5;239m'
@@ -561,16 +571,7 @@ menu_item() {
 show_menu() {
   local choice cats c
   MENU_SHOWN=1
-  ui_banner
-  printf '\n  %s选择检测范围%s\n\n' "$U_B" "$U_R" >&2
-  menu_item 1 '完整检测' '全部分类 · 约 5 分钟' '默认'
-  menu_item 2 'AI 和社媒' 'AI · Meta · Telegram · 社媒 · Google'
-  menu_item 3 '金融和购物' '金融支付 · 虚拟币 · 银行 · 电商购物'
-  menu_item 4 '流媒体' '流媒体 · Google'
-  menu_item 5 '自选分类' '输入分类名'
-  menu_item 6 '快速检测' '全部分类 · 不测 DNS 触发 · 约 3 分钟'
-  menu_item 7 '低压力检测' '全部分类 · 降低并发 · 适合小内存 VPS'
-  menu_item 0 '退出' ''
+  menu_draw
   while :; do
     printf '\n  %s❯%s 请输入 [默认 1]: ' "$U_C" "$U_R" >&2
     IFS= read -r choice </dev/tty || choice=1
@@ -594,6 +595,20 @@ show_menu() {
       *) printf '  %s请输入 0 到 7%s\n' "$U_E" "$U_R" >&2 ;;
     esac
   done
+}
+
+# 菜单的样子：字标和各个选项。README 的配图（docs/tools/build.py）也用它画
+menu_draw() {
+  ui_banner
+  printf '\n  %s选择检测范围%s\n\n' "$U_B" "$U_R" >&2
+  menu_item 1 '完整检测' '全部分类 · 约 5 分钟' '默认'
+  menu_item 2 'AI 和社媒' 'AI · Meta · Telegram · 社媒 · Google'
+  menu_item 3 '金融和购物' '金融支付 · 虚拟币 · 银行 · 电商购物'
+  menu_item 4 '流媒体' '流媒体 · Google'
+  menu_item 5 '自选分类' '输入分类名'
+  menu_item 6 '快速检测' '全部分类 · 不测 DNS 触发 · 约 3 分钟'
+  menu_item 7 '低压力检测' '全部分类 · 降低并发 · 适合小内存 VPS'
+  menu_item 0 '退出' ''
 }
 
 need_arg() {
@@ -622,6 +637,7 @@ parse_args() {
       -v|--verbose)  VERBOSE=1; shift ;;
       -j|--json)     JSON=1; shift ;;
       -m|--markdown) MARKDOWN=1; shift ;;
+      -s|--summary)  SUMMARY=1; shift ;;
       --no-mask)     MASK=0; shift ;;
       -y|--yes)      shift ;;
       --color)       USE_COLOR=2; shift ;;
@@ -2153,7 +2169,8 @@ AWK
 
 report_text() {
   local depth
-  depth=$(color_depth 1)
+  color_depth 1
+  depth=$COLOR_DEPTH
   cat > "$WORK/report.awk" <<'AWK'
 BEGIN {
   FS = "\t"; E = sprintf("%c", 27); W = 76
@@ -3037,14 +3054,12 @@ END {
     if (proxy) term("测的范围", "节点这一层。经代理时没有路由信息，只有回显证据")
     else term("测的范围", "上游这一层。节点上的 xray、sing-box 可能另有路由规则，要检查那一层用 -x 经节点测")
   }
-  # 分享摘要由 report_share 接着输出，这里只画标题
-  if (SHARE != "") sec("分享摘要", SHARE)
 }
 AWK
   touch "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
   # 出口池按回显次数排，默认的那个排最前
   sort -t "$(printf '\t')" -k4,4nr -k2,2nr "$WORK/pool.tsv" > "$WORK/pool_sorted.tsv"
-  awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" -v SHARE="${SHARE_NOTE:-}" \
+  awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" \
     -v F_CATS="$WORK/cats.txt" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNI="$WORK/sni.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
     -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
@@ -3472,21 +3487,11 @@ main() {
     report_json
   elif (( MARKDOWN )); then
     report_share markdown
+  elif (( SUMMARY )); then
+    report_share summary
   else
-    SHARE_NOTE=$( (( MASK )) && echo 'IP 已打码，可直接复制' || echo '含完整 IP') report_text
+    report_text
     printf '\n'
-    report_share summary | sed 's/^/  /'
-    printf '\n'
-    if (( STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
-      local c=''
-      printf '  输出完整的 Markdown 报告，方便贴到论坛？[y/N]: ' >&2
-      IFS= read -r c </dev/tty || c=''
-      case $c in
-        y|Y) printf '\n'; report_share markdown ;;
-      esac
-    else
-      printf '  要完整的 Markdown 报告，运行时加 -m，例如 -m > report.md\n'
-    fi
   fi
   (( EXIT_CODE )) && exit "$(exit_status)"
   return 0

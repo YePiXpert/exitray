@@ -68,7 +68,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/sp
 | 赶时间：不测 DNS 触发和 SNI，约 3 分钟 | `-y --no-dns-test --no-sniff` |
 | 小内存 VPS：降低并发 | `-L` |
 | 检查节点（xray、sing-box）自己的分流 | `-x socks5h://127.0.0.1:1080` |
-| 把结果贴到论坛 | `-m` |
+| 发几行摘要给别人 | `-s` |
+| 把完整表格贴到论坛 | `-m` |
 
 要反复运行，先把脚本存下来，之后用 `bash splitcheck.sh` 加参数。下文的例子都这么写：
 
@@ -131,7 +132,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 <summary>同一份报告的纯文本版</summary>
 
 ```text
-  ┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─   分流检测报告  v2.0.0
+  ┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─   分流检测报告  v2.1.0
   └─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐   vps1 · 2026-11-08 21:06:38
   └─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴   142 个目标 · 地区 tw · 用时 3 分 56 秒
 
@@ -299,7 +300,13 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 
 ## 分享结果
 
-报告末尾附一段可以直接复制的摘要，IP 只保留前两段，不带主机名和路由：
+终端里的报告是给自己看的，里面有完整的出口 IP、主机名和路由。要发给别人，换成下面两种输出：IP 只保留前两段，不带主机名和路由。它们和文字报告是同一次检测的不同输出，要哪种就加哪个参数。
+
+加 `-s` 输出十几行摘要，适合贴在聊天里：
+
+```bash
+bash splitcheck.sh -s
+```
 
 ```text
 splitcheck 分流检测 · 2026-11-08 · 地区 tw · 142 个目标
@@ -326,7 +333,7 @@ Google：A 3 · C 2
 https://github.com/YePiXpert/splitcheck
 ```
 
-要贴到论坛的完整表格，在终端里运行时结尾回答 `y`，或者加 `-m` 直接输出 Markdown：
+加 `-m` 输出完整的 Markdown 表格，适合贴到论坛：
 
 ```bash
 bash splitcheck.sh -m > report.md
@@ -339,7 +346,7 @@ bash splitcheck.sh -y --color | less -R
 ```
 
 > [!WARNING]
-> 摘要和 Markdown 默认打码，要完整 IP 得加 `--no-mask`。摘要上面的完整报告没有打码，里面有出口 IP、主机名和路由，分享时只复制摘要。
+> `-s` 和 `-m` 默认打码，要完整 IP 得加 `--no-mask`。终端里的完整报告没有打码，截图或复制出去之前留意这一点。
 
 ## 怎么判断的
 
@@ -421,7 +428,8 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 | `-v`, `--verbose` | 明细列出全部目标，外加每一轮和每个 IP 的结果、路径和证据 |
 | `-j`, `--json` | 输出 JSON |
 | `-m`, `--markdown` | 输出方便分享的 Markdown 报告，IP 默认打码 |
-| `--no-mask` | 分享摘要和 Markdown 里显示完整 IP |
+| `-s`, `--summary` | 只输出十几行可直接复制的摘要，IP 默认打码 |
+| `--no-mask` | `-s` 和 `-m` 的输出里显示完整 IP |
 | `--exit-code` | 用退出码表示结论，方便 cron 和监控 |
 | `--color` | 输出不是终端时也用颜色，例如接 `less -R` 或 `tee` |
 | `--no-color` | 不用颜色。设了环境变量 `NO_COLOR` 也一样 |
@@ -496,6 +504,11 @@ python3 tests/test_regression.py AnalyzeTests
 
 - **并发的探测进程各写各的文件**（`rows.d/进程号`），每一步结束再合并。不要让几个进程追加同一个文件：一行是不是一次写完、写完还动不动文件，取决于 shell 和 coreutils 的实现。uutils 的 `dd` 在 2026 年 10 月以前写完会把文件截到自己写到的位置，并发追加时会截掉别的进程刚写的行。
 - **报告的版式定在 78 格以内**，测试会检查每一行的显示宽度。awk 脚本在 C locale 下按字节处理，汉字和全角标点算 2 格，框线和方块算 1 格。改版式时用 `dwidth`、`pad`、`fit` 这几个函数，不要直接数 `length`。
+- **README 的配图**由 `docs/tools/build.py` 生成：用示例数据跑脚本里真实的报告和界面函数，把终端输出画成 SVG。改了报告的版式或文案，重新生成一次；它也会核对 README 里的文本样例是不是脚本真会输出的内容。加 `--check` 只检查、不写文件：
+
+  ```bash
+  python3 docs/tools/build.py
+  ```
 
 ## 许可证
 
