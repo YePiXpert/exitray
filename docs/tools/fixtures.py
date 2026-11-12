@@ -55,7 +55,7 @@ def make(scenario, targets, out, version):
 def _block(targets, row, out, version):
     A = '203.0.113.63'
     LINE = '10.0.1.1 203.0.113.1 203.0.113.9 62.115.1.1'
-    DIV = '10.0.1.1 10.66.1.202 ?'      # 在第 2 跳拐去了没见过的内网地址
+    DIV = '10.0.1.1 10.80.0.1 ?'      # 在第 2 跳拐去了没见过的内网地址
     for m, h, ip in CAL:
         row('C', 'E', 'cal', h, 0, ip, A, m, '-', '-', LINE)
     for i in range(1, 6):

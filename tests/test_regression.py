@@ -770,7 +770,7 @@ class AnalyzeTests(unittest.TestCase):
     def test_one_echo_exit_backed_by_routes_is_not_doubted(self):
         # 上游把一批 IP 导去另一条线路时，常常只有一个目标拿得到回显，其余目标靠路由推断过去。
         # 至少 2 个目标的路由走那条和默认不同的线路，就不再提示可能是误报
-        line = '10.0.0.1 10.66.1.202'
+        line = '10.0.0.1 10.80.0.1'
         for extra in (1, 2):
             data = [*self.calibration(), self.direct('b.example', ip='1.1.1.3'),
                     ('T', 'P', 'meta', 'm0.example', 1, '2.2.2.1', '9.9.9.9', 'meta', '-', '-', line + ' 5.5.5.5'),
@@ -936,7 +936,7 @@ class AnalyzeTests(unittest.TestCase):
     def test_dead_ips_whose_route_was_diverted_are_an_upstream_block(self):
         # 目标的 IP 全都连不上，光看这个分不清是谁的问题。但路由在第 2 跳的内网段就离开了已确认的
         # 线路，说明是上游把这个 IP 导去了别处
-        dead = ('T', 'P', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 10.66.1.202 ?', 'dead')
+        dead = ('T', 'P', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 10.80.0.1 ?', 'dead')
         retest = ('31.13.1.1',) + self.TCP_DEAD
         self.analyze(rows(*self.calibration(), self.direct(), dead, *self.retests(dead, retest, retest)),
                      [('ai', 'a.example'), ('meta', 'f.example')])
@@ -944,11 +944,11 @@ class AnalyzeTests(unittest.TestCase):
         data = self.json()
         target = data['targets'][1]
         self.assertEqual(target['reach'], 'dead')
-        self.assertEqual(target['ips'], [self.ip_entry('31.13.1.1', [], 'dead', 0, 3, {'hop': 2, 'ip': '10.66.1.202'})])
+        self.assertEqual(target['ips'], [self.ip_entry('31.13.1.1', [], 'dead', 0, 3, {'hop': 2, 'ip': '10.80.0.1'})])
         self.assertEqual((data['coverage']['ip_blocked'], data['coverage']['diverted']), (1, 1))
         text = self.text()
         self.assertIn('1 个目标全部 IP 连不上，且路由在内网段改了道', text)
-        self.assertIn('1 个网段在第 2 跳改道，走 10.66.1.202', text)
+        self.assertIn('1 个网段在第 2 跳改道，走 10.80.0.1', text)
         self.assertRegex(text, r'31\.13\.1\.0/24 +✗ 连不上 +0/3 +第 2 跳改道 +f\.example')
         self.assertNotIn('分不清是目标挂了还是被拦', text)
         self.assertIn('1 个目标全部 IP 连不上且路由改道', self.summary())
@@ -967,12 +967,12 @@ class AnalyzeTests(unittest.TestCase):
     def test_route_diverted_but_reachable_is_weak_evidence(self):
         # 改了道还连得上，但没有回显：出口多半不是默认的那个，只能算弱推断，并且标出改道
         self.analyze(rows(*self.calibration(), self.direct(),
-                          ('T', 'P', 'meta', 'f.example', 1, '57.145.1.1', '-', '-', '200', '-', '10.0.0.1 10.66.1.202 5.5.5.5', 'ok')),
+                          ('T', 'P', 'meta', 'f.example', 1, '57.145.1.1', '-', '-', '200', '-', '10.0.0.1 10.80.0.1 5.5.5.5', 'ok')),
                      [('ai', 'a.example'), ('meta', 'f.example')])
         self.assert_verdict('inconclusive')
         data = self.json()
         self.assertEqual(data['targets'][1]['system_dns']['evidence'], 'weak')
-        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('57.145.1.1', ['A'], 'ok', 1, 1, {'hop': 2, 'ip': '10.66.1.202'})])
+        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('57.145.1.1', ['A'], 'ok', 1, 1, {'hop': 2, 'ip': '10.80.0.1'})])
         text = self.text()
         self.assertIn('还连得上，出口未知', text)
         self.assertRegex(text, r'f\.example +A\? +- +弱推断 +改道')
