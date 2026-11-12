@@ -1720,7 +1720,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('说明', result.stdout)
         self.assertIn('图片已保存', result.stderr)
-        images = sorted(self.dir.glob('splitcheck-*'))
+        images = sorted(self.dir.glob('splitcheck-report-*'))
         self.assertEqual(len(images), 1, images)
         image = images[0]
         self.assertIn(str(image.name), result.stderr)

@@ -3666,7 +3666,8 @@ save_image() {
   for dir in "$PWD" "${HOME:-}" "${TMPDIR:-/tmp}"; do
     [[ -n $dir && -d $dir && -w $dir ]] && break
   done
-  name="$dir/splitcheck-$(date +%Y%m%d-%H%M%S)"
+  # splitcheck-report 开头：仓库的 .gitignore 和隐私检查都把这样的文件当成运行报告，不会被误提交
+  name="$dir/splitcheck-report-$(date +%Y%m%d-%H%M%S)"
   if ! command -v rsvg-convert >/dev/null 2>&1; then
     why='没有 rsvg-convert'
   elif ! has_cjk_font; then
