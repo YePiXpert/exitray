@@ -24,10 +24,10 @@
 <rect x="717.0" y="34" width="84" height="38" rx="9" fill="#232733" stroke="#e6e8ee" stroke-opacity="0.9" stroke-width="1.2"/>
 <text x="759.0" y="58" text-anchor="middle" font-size="13.5" font-weight="700" fill="#e6e8ee">报告</text>
 <path d="M35.0,81v5h272.0v-5" fill="none" stroke="#4fd0d6" stroke-opacity="0.7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="171.0" y="106" text-anchor="middle" font-size="12.5" fill="#4fd0d6">只用加密 DNS，不发明文查询</text>
+<text x="171.0" y="106" text-anchor="middle" font-size="13" fill="#4fd0d6">只用加密 DNS，不发明文查询</text>
 <path d="M329.0,81v5h174.0v-5" fill="none" stroke="#f2c14e" stroke-opacity="0.7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="416.0" y="106" text-anchor="middle" font-size="12.5" fill="#f2c14e">开始有明文查询</text>
+<text x="416.0" y="106" text-anchor="middle" font-size="13" fill="#f2c14e">开始有明文查询</text>
 <path d="M525.0,81v5h174.0v-5" fill="none" stroke="#a98bf5" stroke-opacity="0.7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="612.0" y="106" text-anchor="middle" font-size="12.5" fill="#a98bf5">核实和补充</text>
-<text x="416.0" y="158" text-anchor="middle" font-size="12.5" fill="#7f8696">同一个 IP 在明文查询前后出口不同，就是 DNS 触发的分流；只出现过一次的读数要复测过才算数。</text>
+<text x="612.0" y="106" text-anchor="middle" font-size="13" fill="#a98bf5">核实和补充</text>
+<text x="416.0" y="158" text-anchor="middle" font-size="13" fill="#7f8696">同一个 IP 在明文查询前后出口不同，就是 DNS 触发的分流；只出现过一次的读数要复测过才算数。</text>
 </svg>

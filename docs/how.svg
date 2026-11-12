@@ -6,39 +6,39 @@
 </defs>
 <rect x="0.5" y="0.5" width="831" height="355" rx="12" fill="#14161b" stroke="#262a33"/>
 <rect x="232" y="40" width="338" height="262" rx="14" fill="#181b22" stroke="#353b49" stroke-dasharray="4 5"/>
-<text x="252" y="68" font-size="14" font-weight="700" fill="#c3c8d2">上游</text>
-<text x="290" y="68" font-size="12.5" fill="#7f8696">在这里分流，从本机看不出来</text>
+<text x="252" y="68" font-size="15" font-weight="700" fill="#c3c8d2">上游</text>
+<text x="294" y="68" font-size="13" fill="#7f8696">在这里分流，从本机看不出来</text>
 <rect x="36" y="132" width="136" height="88" rx="12" fill="#1c2029" stroke="#3a4150"/>
 <text x="104" y="171" text-anchor="middle" font-size="15.5" font-weight="700" fill="#e6e8ee">你的机器</text>
-<text x="104" y="194" text-anchor="middle" font-size="12.5" fill="#7f8696">VPS / 家宽</text>
+<text x="104" y="194" text-anchor="middle" font-size="13" fill="#7f8696">VPS / 家宽</text>
 <path d="M172,176H292" stroke="#586172" stroke-width="2.2" fill="none"/>
 <path d="M292,176C332,176 332,104 372,104" stroke="url(#gA)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 <rect x="372" y="91" width="30" height="26" rx="6" fill="#5fd787"/>
 <text x="387" y="109" text-anchor="middle" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#101216">A</text>
-<text x="414" y="103" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" font-weight="700" fill="#e6e8ee">203.0.113.63</text>
-<text x="414" y="121" font-size="12" fill="#7f8696">默认出口</text>
+<text x="414" y="103" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#e6e8ee">203.0.113.63</text>
+<text x="414" y="122" font-size="13" fill="#7f8696">默认出口</text>
 <path d="M582,104H630" stroke="#5fd787" stroke-width="2" fill="none" stroke-linecap="round"/>
 <path d="M625,99L632,104L625,109" stroke="#5fd787" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="646" y="103" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" fill="#e6e8ee">chatgpt.com</text>
-<text x="646" y="121" font-size="12" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#5fd787">203.0.113.63</tspan></text>
+<text x="646" y="103" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" fill="#e6e8ee">chatgpt.com</text>
+<text x="646" y="122" font-size="13" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#5fd787">203.0.113.63</tspan></text>
 <path d="M292,176C332,176 332,176 372,176" stroke="url(#gB)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 <rect x="372" y="163" width="30" height="26" rx="6" fill="#ffaf5f"/>
 <text x="387" y="181" text-anchor="middle" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#101216">B</text>
-<text x="414" y="175" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" font-weight="700" fill="#e6e8ee">198.51.100.125</text>
-<text x="414" y="193" font-size="12" fill="#7f8696">机房 IP · 别的运营商</text>
+<text x="414" y="175" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#e6e8ee">198.51.100.125</text>
+<text x="414" y="194" font-size="13" fill="#7f8696">机房 IP · 别的运营商</text>
 <path d="M582,176H630" stroke="#ffaf5f" stroke-width="2" fill="none" stroke-linecap="round"/>
 <path d="M625,171L632,176L625,181" stroke="#ffaf5f" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="646" y="175" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" fill="#e6e8ee">www.facebook.com</text>
-<text x="646" y="193" font-size="12" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#ffaf5f">198.51.100.125</tspan></text>
+<text x="646" y="175" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" fill="#e6e8ee">www.facebook.com</text>
+<text x="646" y="194" font-size="13" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#ffaf5f">198.51.100.125</tspan></text>
 <path d="M292,176C332,176 332,248 372,248" stroke="url(#gC)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 <rect x="372" y="235" width="30" height="26" rx="6" fill="#d787ff"/>
 <text x="387" y="253" text-anchor="middle" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#101216">C</text>
-<text x="414" y="247" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" font-weight="700" fill="#e6e8ee">192.0.2.36</text>
-<text x="414" y="265" font-size="12" fill="#7f8696">同一运营商的另一个出口</text>
+<text x="414" y="247" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" font-weight="700" fill="#e6e8ee">192.0.2.36</text>
+<text x="414" y="266" font-size="13" fill="#7f8696">同一运营商的另一个出口</text>
 <path d="M582,248H630" stroke="#d787ff" stroke-width="2" fill="none" stroke-linecap="round"/>
 <path d="M625,243L632,248L625,253" stroke="#d787ff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="646" y="247" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="13.5" fill="#e6e8ee">www.youtube.com</text>
-<text x="646" y="265" font-size="12" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#d787ff">192.0.2.36</tspan></text>
+<text x="646" y="247" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14" fill="#e6e8ee">www.youtube.com</text>
+<text x="646" y="266" font-size="13" fill="#7f8696">回显 <tspan font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" fill="#d787ff">192.0.2.36</tspan></text>
 <circle cx="292" cy="176" r="4.6" fill="#14161b" stroke="#9aa2b3" stroke-width="2"/>
-<text x="416.0" y="334" text-anchor="middle" font-size="12.5" fill="#7f8696">目标看到的访问者 IP，就是这条连接实际走的出口。把请求钉到目标的 IP 上，让它自己报出来。</text>
+<text x="416.0" y="334" text-anchor="middle" font-size="13.5" fill="#7f8696">目标看到的访问者 IP，就是这条连接实际走的出口。把请求钉到目标的 IP 上，让它自己报出来。</text>
 </svg>
