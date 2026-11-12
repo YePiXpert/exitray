@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y gawk mawk busybox
+      # librsvg2-bin 和中文字体给 -i 转 PNG 用，测试会检查真的转出了 PNG
+      - run: sudo apt-get update -qq && sudo apt-get install -y gawk mawk busybox librsvg2-bin fonts-wqy-microhei
       - run: bash -n splitcheck.sh
       - name: gawk
         run: TEST_AWK=gawk python3 tests/test_regression.py

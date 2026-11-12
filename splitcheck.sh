@@ -30,7 +30,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="2.1.0"
+VERSION="2.2.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
@@ -52,6 +52,9 @@ INSTALL=1
 JSON=0
 MARKDOWN=0
 SUMMARY=0
+IMAGE=0
+PKG_SUDO=()
+PKG_ERR=""
 MASK=1
 BRIEF=0
 VERBOSE=0
@@ -113,6 +116,7 @@ usage() {
   -j, --json            输出 JSON
   -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
   -s, --summary         只输出十几行可直接复制的摘要，IP 默认打码
+  -i, --image           另存一张概览图片（PNG，IP 默认打码），方便发给别人
       --no-mask         -s 和 -m 的输出里显示完整 IP
       --exit-code       用退出码表示结论，方便 cron 和监控（见下）
   -y, --yes             不显示启动菜单，直接测全部分类
@@ -126,7 +130,8 @@ usage() {
 
 依赖：bash 4+、curl、awk。mtr、traceroute 或 tracepath 用于探测路由，dig 用于明文 DNS
 触发测试。缺少时用系统的包管理器（apt、dnf、yum、apk、pacman、zypper）一次装好，
-要 root 或免密 sudo；装不了就跳过对应检查。
+要 root 或免密 sudo；装不了就跳过对应检查。-i 存 PNG 要 rsvg-convert 和中文字体，
+同样自动装，装不了就存成 SVG。
 
 明文解析过的 IP 会在上游名单里留一段时间，两次运行建议间隔 15 分钟以上，
 否则加密 DNS 那一轮可能受上一次运行影响。
@@ -638,6 +643,7 @@ parse_args() {
       -j|--json)     JSON=1; shift ;;
       -m|--markdown) MARKDOWN=1; shift ;;
       -s|--summary)  SUMMARY=1; shift ;;
+      -i|--image)    IMAGE=1; shift ;;
       --no-mask)     MASK=0; shift ;;
       -y|--yes)      shift ;;
       --color)       USE_COLOR=2; shift ;;
@@ -667,56 +673,100 @@ parse_args() {
 # sudo；--no-install 或 SPLITCHECK_NO_INSTALL=1 时不装，照旧跳过对应检查
 install_deps() {
   (( INSTALL )) && [[ ${SPLITCHECK_NO_INSTALL:-} != 1 ]] || return 0
-  local route=0 dig=0 pm='' p log ok=0
-  local -a sudo=() pkgs=()
+  local route=0 dig=0 img=0 font=0 pm='' p missing=''
+  local -a pkgs=() imgs=()
   if (( USE_ROUTE )) && ! command -v mtr >/dev/null 2>&1 && ! command -v traceroute >/dev/null 2>&1 &&
     ! command -v tracepath >/dev/null 2>&1; then
     route=1
   fi
   (( USE_DNS_TEST )) && ! command -v dig >/dev/null 2>&1 && dig=1
-  (( route + dig > 0 )) || return 0
+  if (( IMAGE )); then
+    command -v rsvg-convert >/dev/null 2>&1 || img=1
+    has_cjk_font || font=1
+  fi
+  (( route + dig + img + font > 0 )) || return 0
   for p in apt-get dnf yum apk pacman zypper; do
     command -v "$p" >/dev/null 2>&1 && { pm=$p; break; }
   done
   [[ -n $pm ]] || return 0
+  PKG_SUDO=()
   if (( EUID != 0 )); then
     if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-      sudo=(sudo -n)
+      PKG_SUDO=(sudo -n)
     else
-      install_say "缺少$( (( route )) && printf ' mtr')$( (( dig )) && printf ' dig')，不是 root 也没有免密 sudo，不自动安装，跳过对应检查"
+      (( route )) && missing+=' mtr'
+      (( dig )) && missing+=' dig'
+      (( img )) && missing+=' rsvg-convert'
+      (( font )) && missing+=' 中文字体'
+      install_say "缺少$missing，不是 root 也没有免密 sudo，不自动安装，跳过对应检查"
       return 0
     fi
   fi
   case $pm in
-    apt-get) (( route )) && pkgs+=(mtr-tiny); (( dig )) && pkgs+=(dnsutils) ;;
-    apk) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-tools) ;;
-    pacman) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind) ;;
-    *) (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-utils) ;;
+    apt-get)
+      (( route )) && pkgs+=(mtr-tiny); (( dig )) && pkgs+=(dnsutils)
+      (( img )) && imgs+=(librsvg2-bin); (( font )) && imgs+=(fontconfig fonts-wqy-microhei) ;;
+    apk)
+      (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-tools)
+      (( img )) && imgs+=(rsvg-convert); (( font )) && imgs+=(fontconfig font-wqy-zenhei) ;;
+    pacman)
+      (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind)
+      (( img )) && imgs+=(librsvg); (( font )) && imgs+=(fontconfig wqy-microhei) ;;
+    zypper)
+      (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-utils)
+      (( img )) && imgs+=(rsvg-convert); (( font )) && imgs+=(fontconfig wqy-microhei-fonts) ;;
+    *)
+      (( route )) && pkgs+=(mtr); (( dig )) && pkgs+=(bind-utils)
+      (( img )) && imgs+=(librsvg2-tools); (( font )) && imgs+=(fontconfig wqy-microhei-fonts) ;;
   esac
-  install_say "安装依赖 ${pkgs[*]}（$pm，只装这一次；不想装加 --no-install）"
-  log=$(mktemp "${TMPDIR:-/tmp}/splitcheck-install.XXXXXX") || return 0
+  if (( ${#pkgs[@]} > 0 )); then
+    install_say "安装依赖 ${pkgs[*]}（$pm，只装这一次；不想装加 --no-install）"
+    if pkg_install "$pm" "${pkgs[@]}"; then
+      install_say "已装好 ${pkgs[*]}"
+    else
+      install_say "安装失败，跳过对应检查：$PKG_ERR"
+    fi
+  fi
+  if (( ${#imgs[@]} > 0 )); then
+    install_say "安装出图片要用的 ${imgs[*]}（$pm，只装这一次；不想装加 --no-install）"
+    if pkg_install "$pm" "${imgs[@]}"; then
+      install_say "已装好 ${imgs[*]}"
+    else
+      install_say "安装失败，图片改存成 SVG：$PKG_ERR"
+    fi
+  fi
+}
+
+# 用系统的包管理器装一批包。PKG_SUDO 要先设好；装不上时最后一行输出放进 PKG_ERR
+pkg_install() {
+  local pm=$1 log ok=0
+  shift
+  PKG_ERR=''
+  log=$(mktemp "${TMPDIR:-/tmp}/splitcheck-install.XXXXXX") || return 1
   local -a lim=()
   command -v timeout >/dev/null 2>&1 && lim=(timeout 300)
   case $pm in
     apt-get)
       # 软件源索引太旧时先装不上，更新一次再装
-      if ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}" >"$log" 2>&1 ||
-        { ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} apt-get update -qq >>"$log" 2>&1 &&
-          ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${pkgs[@]}" >>"$log" 2>&1; }; then
+      if ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >"$log" 2>&1 ||
+        { ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} apt-get update -qq >>"$log" 2>&1 &&
+          ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >>"$log" 2>&1; }; then
         ok=1
       fi ;;
-    dnf|yum) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} "$pm" install -y -q "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
-    apk) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} apk add -q --no-progress "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
-    pacman) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} pacman -S --noconfirm --needed "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
-    zypper) ${sudo[@]+"${sudo[@]}"} ${lim[@]+"${lim[@]}"} zypper -n -q install "${pkgs[@]}" >"$log" 2>&1 && ok=1 ;;
+    dnf|yum) ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} "$pm" install -y -q "$@" >"$log" 2>&1 && ok=1 ;;
+    apk) ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} apk add -q --no-progress "$@" >"$log" 2>&1 && ok=1 ;;
+    pacman) ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} pacman -S --noconfirm --needed "$@" >"$log" 2>&1 && ok=1 ;;
+    zypper) ${PKG_SUDO[@]+"${PKG_SUDO[@]}"} ${lim[@]+"${lim[@]}"} zypper -n -q install "$@" >"$log" 2>&1 && ok=1 ;;
   esac
   hash -r
-  if (( ok )); then
-    install_say "已装好 ${pkgs[*]}"
-  else
-    install_say "安装失败，跳过对应检查：$(tail -1 "$log" 2>/dev/null)"
-  fi
+  (( ok )) || PKG_ERR=$(tail -1 "$log" 2>/dev/null)
   rm -f "$log"
+  (( ok ))
+}
+
+# 有没有能显示中文的字体。转 PNG 时没有它，汉字全是方块
+has_cjk_font() {
+  command -v fc-list >/dev/null 2>&1 && [[ -n $(fc-list :lang=zh family 2>/dev/null | head -1) ]]
 }
 
 install_say() {
@@ -2285,6 +2335,20 @@ function clip(s, w, a, n, i, out) {
   return out
 }
 
+# 分享用的图片把出口 IP 打码（--no-mask 时不打）
+function mask(ip, a) {
+  split(ip, a, ".")
+  return a[1] "." a[2] ".*.*"
+}
+function maskall(s, out) {
+  if (!SHARE || !MASK) return s
+  out = ""
+  while (match(s, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/)) {
+    out = out substr(s, 1, RSTART - 1) mask(substr(s, RSTART, RLENGTH))
+    s = substr(s, RSTART + RLENGTH)
+  }
+  return out s
+}
 # 字标：256 色时从青到紫逐列渐变
 function logo(i, s, p, col, out, ch) {
   s = LOGO[i]
@@ -2647,7 +2711,7 @@ END {
   line = line " · 用时 " (el >= 60 ? int(el / 60) " 分 " (el % 60) " 秒" : el " 秒")
   print ""
   print "  " logo(1) "   " B "分流检测报告" R "  " DIM "v" ENVV["version"] (proxy ? " · 经代理" : "") R
-  print "  " logo(2) "   " fit(ENVV["host"], 22) DIM " · " ENVV["time"] R
+  print "  " logo(2) "   " (SHARE ? DIM ENVV["time"] R : fit(ENVV["host"], 22) DIM " · " ENVV["time"] R)
   print "  " logo(3) "   " DIM line R
   print ""
 
@@ -2672,7 +2736,7 @@ END {
     else head = "没发现第二个出口，但 " nopen "/" nt " 个目标证据不足，不能排除分流"
   } else {
     kind = "ok"; label = "无分流"
-    head = "未发现分流，能确认的目标都从 " XI[1] " 出去"
+    head = "未发现分流，能确认的目标都从 " maskall(XI[1]) " 出去"
   }
   print "  " pill(kind, label) " " B head R
   print ""
@@ -2683,7 +2747,7 @@ END {
     T1[1] = RED "✗ 有分流" R; T2[1] = nx " 个出口"
     T3[1] = DIM (nother > 0 ? nother " 个不同运营商" : (norg == 0 ? "同一个运营商" : "运营商没查全")) R
   } else if (nopen > 0) { T1[1] = YEL "? 未见分流" R; T2[1] = "1 个出口"; T3[1] = DIM nopen " 个待确认" R }
-  else { T1[1] = GRN "✓ 无分流" R; T2[1] = "1 个出口"; T3[1] = DIM XI[1] R }
+  else { T1[1] = GRN "✓ 无分流" R; T2[1] = "1 个出口"; T3[1] = DIM maskall(XI[1]) R }
 
   if (proxy) { T1[2] = DIM "- 由节点解析" R; T2[2] = DIM "经代理时不测" R; T3[2] = "" }
   else {
@@ -2774,7 +2838,7 @@ END {
   }
   if (ndivnet > 0) {
     if (!NOTES++) print ""
-    note("warn", "改道", ndivnet " 个网段在第 " divpos " 跳改道，走 " divhops "；" (ndivdead > 0 ? ndivdead " 个改道后连不上" : "还连得上，出口未知"))
+    note("warn", "改道", ndivnet " 个网段在第 " divpos " 跳改道，走 " maskall(divhops) "；" (ndivdead > 0 ? ndivdead " 个改道后连不上" : "还连得上，出口未知"))
   }
   if (np > 1) {
     if (!NOTES++) print ""
@@ -2784,7 +2848,7 @@ END {
   if (nun > 0) {
     if (!NOTES++) print ""
     line = ""
-    for (i = 1; i <= nun; i++) line = line (i > 1 ? "、" : "") UE[i] "（" UN[i] "）"
+    for (i = 1; i <= nun; i++) line = line (i > 1 ? "、" : "") maskall(UE[i]) "（" UN[i] "）"
     note("warn", "偶发出口", nun " 个出口只出现过 1 次：复测看到的是别的出口，按偶发处理")
     more(line "，没有算进结论")
   }
@@ -2817,7 +2881,7 @@ END {
   sec("出口", nx " 个" (np > 1 ? " · 默认出口是 " np " 个 IP 的出口池" : ""))
   for (j = 1; j <= nx; j++) {
     other = (j > 1 && XORG[j] != "-" && XORG[1] != "-" && asn(XORG[j]) != asn(XORG[1]))
-    line = "  " badge(XL[j]) " " (XDEF[j] ? "默认" : "    ") "  " B pad(XI[j], 16) R " " fit(XORG[j] == "-" ? "运营商没查到" : XORG[j], other ? 35 : 49)
+    line = "  " badge(XL[j]) " " (XDEF[j] ? "默认" : "    ") "  " B pad(maskall(XI[j]), 16) R " " fit(XORG[j] == "-" ? "运营商没查到" : XORG[j], other ? 35 : 49)
     if (other) line = line "  " YEL "非默认运营商" R
     print line
     n2 = 0
@@ -2829,13 +2893,13 @@ END {
     s = "回显 " XS[j] " 次"
     if (j > 1 && XS[j] + 0 <= 1 && INFT[XI[j]] + 0 >= 2) s = s "，另有 " INFT[XI[j]] " 个目标的路由走同一条线路"
     IT[++n2] = s
-    if (XSIG[j] != "-") { s = XSIG[j]; gsub(/ > /, " › ", s); IT[++n2] = "线路 " s }
-    if (XHOST[j] != "-") IT[++n2] = fit(XHOST[j], 60)
+    if (XSIG[j] != "-" && !SHARE) { s = XSIG[j]; gsub(/ > /, " › ", s); IT[++n2] = "线路 " s }
+    if (XHOST[j] != "-" && !SHARE) IT[++n2] = fit(XHOST[j], 60)
     flow(IT, n2, W - 10, 3, " · ")
     for (i = 1; i <= FLN; i++) print spc(12) DIM FL[i] R
     if (XDEF[j] && np > 1) {
       n2 = 0
-      for (i = 1; i <= np; i++) IT[++n2] = PIP[i] "（" PCN[i] " 次）"
+      for (i = 1; i <= np; i++) IT[++n2] = maskall(PIP[i]) "（" PCN[i] " 次）"
       flow(IT, n2, W - 18, 2, "、")
       for (i = 1; i <= FLN; i++) print spc(12) DIM (i == 1 ? "出口池  " : "        ") FL[i] R
     }
@@ -2870,6 +2934,12 @@ END {
   if (hd) line = line "   " cells("!", 1) " 连不上"
   if (hq) line = line "   " cells("?", 1) " 未知"
   print "  " spc(17) line
+  # 分享用的图片只要概览，到这里为止
+  if (SHARE) {
+    print ""
+    print "  " DIM "github.com/YePiXpert/splitcheck" R
+    exit
+  }
 
   # ---------- DNS ----------
   if (!proxy && (("resolver" in ENVV) || ("dns_hijack" in ENVV) || ntr > 0 || ENVV["trigger"] == "no-dig" || nblock + nfake > 0 || nq > 0)) {
@@ -3063,7 +3133,7 @@ AWK
   touch "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
   # 出口池按回显次数排，默认的那个排最前
   sort -t "$(printf '\t')" -k4,4nr -k2,2nr "$WORK/pool.tsv" > "$WORK/pool_sorted.tsv"
-  awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" \
+  awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" -v SHARE="${REPORT_SHARE:-0}" -v MASK="$MASK" \
     -v F_CATS="$WORK/cats.txt" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNI="$WORK/sni.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
     -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
@@ -3413,6 +3483,204 @@ judge() {
   cat "$WORK/verdict.tsv" >> "$WORK/env.tsv"
 }
 
+# 把带颜色码的终端输出画成 SVG。按终端的字符格排版，汉字占 2 格；每个字单独放进自己的格子，
+# 框线、方块、对勾这些符号画成路径，换了字体也不会错位。$1 是输入文件，$2 是窗口标题
+render_svg() {
+  cat > "$WORK/svg.awk" <<'AWK'
+BEGIN {
+  E = sprintf("%c", 27)
+  CW = 8.4; LH = 19; PX = 20; PY = 18; BAR = 30
+  BG = "#14161b"; FG = "#d7dae0"; FRAME = "#262a33"
+  FONT = "'DejaVu Sans Mono','Noto Sans Mono CJK SC','WenQuanYi Micro Hei Mono','WenQuanYi Zen Hei Mono',ui-monospace,Menlo,Consolas,'PingFang SC','Microsoft YaHei',monospace"
+  split("#1e1e1e #e06c75 #98c379 #e5c07b #61afef #c678dd #56b6c2 #d4d4d4", B16, " ")
+  # 框线字符从格子中心伸向哪几个方向
+  BOX["─"] = "LR"; BOX["│"] = "UD"; BOX["┌"] = "RD"; BOX["┐"] = "LD"; BOX["└"] = "UR"; BOX["┘"] = "UL"
+  BOX["├"] = "UDR"; BOX["┤"] = "UDL"; BOX["┬"] = "LRD"; BOX["┴"] = "LRU"; BOX["┼"] = "UDLR"; BOX["━"] = "LR"
+  BOX["╭"] = "RD"; BOX["╮"] = "LD"; BOX["╰"] = "UR"; BOX["╯"] = "UL"
+  ROUND["╭"] = 1; ROUND["╮"] = 1; ROUND["╰"] = 1; ROUND["╯"] = 1
+}
+{ L[++n] = $0 }
+function f(v) { return sprintf("%.2f", v) }
+function hx(v) { return sprintf("%02x", v) }
+function pt(c, x, y) { return c f(x) "," f(y) }
+function sgn(v) { return v > 0 ? 1 : (v < 0 ? -1 : 0) }
+function c256(k, r, g, b, v) {
+  k = k + 0
+  if (k < 8) return B16[k + 1]
+  if (k < 16) return B16[k - 7]
+  if (k < 232) {
+    k -= 16; r = int(k / 36); g = int(k / 6) % 6; b = k % 6
+    return "#" hx(r ? 55 + 40 * r : 0) hx(g ? 55 + 40 * g : 0) hx(b ? 55 + 40 * b : 0)
+  }
+  v = 8 + 10 * (k - 232)
+  return "#" hx(v) hx(v) hx(v)
+}
+function sgr(p, a, k, i, c) {
+  k = split(p, a, ";")
+  if (k == 0) { k = 1; a[1] = 0 }
+  for (i = 1; i <= k; i++) {
+    c = a[i] + 0
+    if (c == 0) { FGC = ""; BGC = ""; BOLD = 0; DIMM = 0 }
+    else if (c == 1) BOLD = 1
+    else if (c == 2) DIMM = 1
+    else if (c >= 30 && c <= 37) FGC = B16[c - 29]
+    else if (c >= 40 && c <= 47) BGC = B16[c - 39]
+    else if ((c == 38 || c == 48) && a[i + 1] + 0 == 5) {
+      if (c == 38) FGC = c256(a[i + 2]); else BGC = c256(a[i + 2])
+      i += 2
+    }
+  }
+}
+function esc(s) { gsub(/&/, "\\&amp;", s); gsub(/</, "\\&lt;", s); gsub(/>/, "\\&gt;", s); return s }
+# 下一个字符写进 CH，占几格写进 CWD，返回之后的位置
+function nextc(s, i, c) {
+  c = substr(s, i, 1)
+  if (c ~ /[\001-\177]/) { CH = c; CWD = 1; return i + 1 }
+  if (c ~ /[\300-\337]/) { CH = substr(s, i, 2); CWD = 1; return i + 2 }
+  if (c ~ /[\340-\357]/) { CH = substr(s, i, 3); CWD = (c ~ /\342/) ? 1 : 2; return i + 3 }
+  CH = substr(s, i, 4); CWD = 2; return i + 4
+}
+function plain(s) { gsub(E "\\[[0-9;?]*[A-Za-z]", "", s); return s }
+function width(s, i, w) {
+  s = plain(s); w = 0; i = 1
+  while (i <= length(s)) { i = nextc(s, i); w += CWD }
+  return w
+}
+function endp(d, x, y) {
+  if (d == "L") { EX = x; EY = y + LH / 2 }
+  else if (d == "R") { EX = x + CW; EY = y + LH / 2 }
+  else if (d == "U") { EX = x + CW / 2; EY = y }
+  else { EX = x + CW / 2; EY = y + LH }
+}
+function boxpath(ch, x, y, d, cx, cy, ax, ay, bx, by, r, s, m, k, i) {
+  d = BOX[ch]; cx = x + CW / 2; cy = y + LH / 2
+  if (d == "LR" || d == "UD") {
+    endp(substr(d, 1, 1), x, y); s = pt("M", EX, EY)
+    endp(substr(d, 2, 1), x, y)
+    return s pt("L", EX, EY)
+  }
+  if (length(d) == 2) {
+    endp(substr(d, 1, 1), x, y); ax = EX; ay = EY
+    endp(substr(d, 2, 1), x, y); bx = EX; by = EY
+    if (!(ch in ROUND)) return pt("M", ax, ay) pt("L", cx, cy) pt("L", bx, by)
+    r = 3.78
+    return pt("M", ax, ay) pt("L", cx + sgn(ax - cx) * r, cy + sgn(ay - cy) * r) pt("Q", cx, cy) pt(" ", cx + sgn(bx - cx) * r, cy + sgn(by - cy) * r) pt("L", bx, by)
+  }
+  # 丁字和十字：一条直线穿过去，其余的从中心伸出来
+  if (index(d, "L") && index(d, "R")) { endp("L", x, y); s = pt("M", EX, EY); endp("R", x, y); m = "UD" }
+  else { endp("U", x, y); s = pt("M", EX, EY); endp("D", x, y); m = "LR" }
+  s = s pt("L", EX, EY)
+  for (i = 1; i <= 2; i++) {
+    k = substr(m, i, 1)
+    if (index(d, k)) { endp(k, x, y); s = s pt("M", cx, cy) pt("L", EX, EY) }
+  }
+  return s
+}
+# 画成路径的符号。不是这些符号的返回空串，当文字画
+function glyph(ch, x, y, col, op, cx, cy, o, st) {
+  cx = x + CW / 2; cy = y + LH / 2
+  o = (op < 1) ? " opacity=\"" op "\"" : ""
+  st = " fill=\"none\" stroke=\"" col "\" stroke-linecap=\"round\" stroke-linejoin=\"round\"" o
+  if (ch in BOX) return "<path d=\"" boxpath(ch, x, y) "\" fill=\"none\" stroke=\"" col "\" stroke-width=\"" (ch == "━" ? "2.6" : "1.15") "\" stroke-linecap=\"" (ch == "━" ? "butt" : "square") "\" stroke-linejoin=\"round\"" o "/>"
+  if (ch == "■") return "<rect x=\"" f(cx - 3.2) "\" y=\"" f(cy - 2.7) "\" width=\"6.4\" height=\"6.4\" rx=\"1\" fill=\"" col "\"" o "/>"
+  if (ch == "□") return "<rect x=\"" f(cx - 2.7) "\" y=\"" f(cy - 2.2) "\" width=\"5.4\" height=\"5.4\" rx=\"1\" fill=\"none\" stroke=\"" col "\" stroke-width=\"1.1\"" o "/>"
+  if (ch == "✓") return "<path d=\"" pt("M", cx - 3.2, cy + 0.4) pt("L", cx - 0.9, cy + 3) pt("L", cx + 3.4, cy - 3.2) "\" stroke-width=\"1.6\"" st "/>"
+  if (ch == "✗") return "<path d=\"" pt("M", cx - 2.9, cy - 2.9) pt("L", cx + 2.9, cy + 2.9) pt("M", cx + 2.9, cy - 2.9) pt("L", cx - 2.9, cy + 2.9) "\" stroke-width=\"1.6\"" st "/>"
+  if (ch == "×") return "<path d=\"" pt("M", cx - 2.3, cy - 1.8) pt("L", cx + 2.3, cy + 2.8) pt("M", cx + 2.3, cy - 1.8) pt("L", cx - 2.3, cy + 2.8) "\" stroke-width=\"1.4\"" st "/>"
+  if (ch == "→") return "<path d=\"" pt("M", cx - 3.4, cy + 0.5) pt("L", cx + 3.4, cy + 0.5) pt("M", cx + 0.8, cy - 2.3) pt("L", cx + 3.4, cy + 0.5) pt("L", cx + 0.8, cy + 3.3) "\" stroke-width=\"1.3\"" st "/>"
+  if (ch == "←") return "<path d=\"" pt("M", cx + 3.4, cy + 0.5) pt("L", cx - 3.4, cy + 0.5) pt("M", cx - 0.8, cy - 2.3) pt("L", cx - 3.4, cy + 0.5) pt("L", cx - 0.8, cy + 3.3) "\" stroke-width=\"1.3\"" st "/>"
+  if (ch == "↓") return "<path d=\"" pt("M", cx, cy - 3.4) pt("L", cx, cy + 3.6) pt("M", cx - 2.8, cy + 0.9) pt("L", cx, cy + 3.6) pt("L", cx + 2.8, cy + 0.9) "\" stroke-width=\"1.3\"" st "/>"
+  if (ch == "›") return "<path d=\"" pt("M", cx - 1.6, cy - 2.1) pt("L", cx + 1.8, cy + 0.5) pt("L", cx - 1.6, cy + 3.1) "\" stroke-width=\"1.2\"" st "/>"
+  if (ch == "·") return "<circle cx=\"" f(cx) "\" cy=\"" f(cy + 0.5) "\" r=\"1.05\" fill=\"" col "\"" o "/>"
+  if (ch == "…") return "<circle cx=\"" f(cx - 2.6) "\" cy=\"" f(cy + 4) "\" r=\"0.8\" fill=\"" col "\"" o "/><circle cx=\"" f(cx) "\" cy=\"" f(cy + 4) "\" r=\"0.8\" fill=\"" col "\"" o "/><circle cx=\"" f(cx + 2.6) "\" cy=\"" f(cy + 4) "\" r=\"0.8\" fill=\"" col "\"" o "/>"
+  return ""
+}
+function bgrect(a, b, y, col) {
+  return "<rect x=\"" f(PX + a * CW) "\" y=\"" f(y + 1.5) "\" width=\"" f((b - a) * CW) "\" height=\"" (LH - 3) "\" rx=\"3\" fill=\"" col "\"/>\n"
+}
+# 一行：背景色块先画，字和符号画在上面
+function row(s, y, i, j, c, col, x, g, color, op, a, rects, texts, rbg, rstart) {
+  FGC = ""; BGC = ""; BOLD = 0; DIMM = 0
+  i = 1; col = 0; rects = ""; texts = ""; rbg = ""; rstart = 0
+  while (i <= length(s)) {
+    c = substr(s, i, 1)
+    if (c == E) {
+      j = i + 1
+      while (j <= length(s) && substr(s, j, 1) !~ /[A-Za-z]/) j++
+      if (substr(s, i + 1, 1) == "[" && substr(s, j, 1) == "m") sgr(substr(s, i + 2, j - i - 2))
+      i = j + 1
+      continue
+    }
+    i = nextc(s, i)
+    if (BGC != rbg) {
+      if (rbg != "") rects = rects bgrect(rstart, col, y, rbg)
+      rbg = BGC; rstart = col
+    }
+    if (CH != " ") {
+      x = PX + col * CW
+      color = (FGC != "") ? FGC : FG
+      op = (DIMM && FGC == "") ? 0.55 : 1
+      g = glyph(CH, x, y, color, op)
+      if (g == "") {
+        a = " x=\"" f(x + CWD * CW / 2) "\" y=\"" f(y + LH * 0.72) "\" text-anchor=\"middle\" fill=\"" color "\""
+        if (CWD == 2) a = a " font-size=\"15.4\""
+        if (BOLD) a = a " font-weight=\"700\""
+        if (op < 1) a = a " opacity=\"" op "\""
+        g = "<text" a ">" esc(CH) "</text>"
+      }
+      texts = texts g "\n"
+    }
+    col += CWD
+  }
+  if (rbg != "") rects = rects bgrect(rstart, col, y, rbg)
+  printf "%s%s", rects, texts
+}
+END {
+  first = 1
+  while (first <= n && plain(L[first]) ~ /^ *$/) first++
+  last = n
+  while (last >= first && plain(L[last]) ~ /^ *$/) last--
+  cols = 78
+  for (r = first; r <= last; r++) { w = width(L[r]); if (w > cols) cols = w }
+  top = (TITLE != "") ? BAR : 0
+  W = int(PX * 2 + cols * CW + 0.5); H = int(top + PY * 2 + (last - first + 1) * LH + 0.5)
+  printf "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\" font-family=\"%s\" font-size=\"14\">\n", W, H, W, H, FONT
+  printf "<rect x=\"0.5\" y=\"0.5\" width=\"%d\" height=\"%d\" rx=\"10\" fill=\"%s\" stroke=\"%s\"/>\n", W - 1, H - 1, BG, FRAME
+  if (TITLE != "") {
+    printf "<path d=\"M0.5,%dH%.1f\" stroke=\"%s\"/>\n", BAR, W - 0.5, FRAME
+    printf "<circle cx=\"20\" cy=\"15\" r=\"5.5\" fill=\"#ff5f57\"/><circle cx=\"38\" cy=\"15\" r=\"5.5\" fill=\"#febc2e\"/><circle cx=\"56\" cy=\"15\" r=\"5.5\" fill=\"#28c840\"/>\n"
+    printf "<text x=\"%d\" y=\"19.5\" text-anchor=\"middle\" fill=\"#8b90a0\" font-size=\"12.5\">%s</text>\n", W / 2, esc(TITLE)
+  }
+  for (r = first; r <= last; r++) row(L[r], top + PY + (r - first) * LH)
+  print "</svg>"
+}
+AWK
+  awk -v TITLE="${2:-}" -f "$WORK/svg.awk" "$1"
+}
+
+# -i：把概览存成一张图片，IP 默认打码。有 rsvg-convert 和中文字体就转成 PNG，没有就存 SVG
+save_image() {
+  local dir name why=''
+  REPORT_SHARE=1 USE_COLOR=2 report_text > "$WORK/image.ansi" &&
+    render_svg "$WORK/image.ansi" splitcheck > "$WORK/image.svg" || { warn "图片没生成出来"; return 0; }
+  for dir in "$PWD" "${HOME:-}" "${TMPDIR:-/tmp}"; do
+    [[ -n $dir && -d $dir && -w $dir ]] && break
+  done
+  name="$dir/splitcheck-$(date +%Y%m%d-%H%M%S)"
+  if ! command -v rsvg-convert >/dev/null 2>&1; then
+    why='没有 rsvg-convert'
+  elif ! has_cjk_font; then
+    why='没有中文字体'
+  elif rsvg-convert -z 2 -o "$name.png" "$WORK/image.svg" 2>/dev/null && [[ -s $name.png ]]; then
+    printf '  图片已保存：%s\n' "$name.png" >&2
+    return 0
+  else
+    why='rsvg-convert 转换失败'
+    rm -f "$name.png"
+  fi
+  cp "$WORK/image.svg" "$name.svg" && printf '  图片已保存：%s（%s，存成了 SVG，用浏览器打开）\n' "$name.svg" "$why" >&2
+}
+
 # --exit-code 用：0 未发现分流，2 有分流、DNS 被动了手脚或按 IP 拦截，3 证据不足
 exit_status() {
   case $(awk -F'\t' '$1 == "verdict" { v = $2 } END { print v }' "$WORK/env.tsv") in
@@ -3426,7 +3694,7 @@ main() {
   parse_args "$@"
   check_deps
   ui_setup
-  if (( $# == 0 && STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
+  if (( ($# == 0 || ($# == 1 && IMAGE)) && STDIN_TTY )) && [[ -t 1 && -r /dev/tty ]]; then
     show_menu
   fi
   (( LOW_RESOURCE )) && low_resource
@@ -3497,6 +3765,7 @@ main() {
     report_text
     printf '\n'
   fi
+  (( IMAGE )) && save_image
   (( EXIT_CODE )) && exit "$(exit_status)"
   return 0
 }

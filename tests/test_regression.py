@@ -295,6 +295,15 @@ class EmitTests(unittest.TestCase):
         self.assertIn('已装好 mtr-tiny dnsutils', result.stderr)
 
     @unittest.skipUnless(os.name == 'posix', '需要符号链接')
+    def test_image_tools_are_installed_when_asked_for(self):
+        root, env = self.fake_installer()
+        result = shell('USE_ROUTE=0; USE_DNS_TEST=0; IMAGE=1; install_deps', env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        line = 'install -y -qq librsvg2-bin fontconfig fonts-wqy-microhei'
+        self.assertEqual((root / 'log').read_text().splitlines(), [line, 'update -qq', line])
+        self.assertIn('已装好 librsvg2-bin', result.stderr)
+
+    @unittest.skipUnless(os.name == 'posix', '需要符号链接')
     def test_install_only_what_the_run_needs_and_can_be_turned_off(self):
         root, env = self.fake_installer()
         # 不测 DNS 触发就不装 dig
@@ -1162,6 +1171,37 @@ class AnalyzeTests(unittest.TestCase):
                      [('ai', 'a.example'), ('ai', 'z.example')])
         self.assertEqual([t['name'] for t in self.json()['targets']], ['a.example', 'z.example'])
 
+    def test_share_overview_masks_and_stops_after_the_grid(self):
+        self.analyze(rows(*self.calibration(path='10.0.0.1 1.2.3.4'), self.direct()), [('ai', 'a.example')])
+        full = plain(self.run_report('USE_COLOR=2 report_text'))
+        self.assertIn('8.8.8.8', full)
+        share = plain(self.run_report('USE_COLOR=2 REPORT_SHARE=1 report_text'))
+        self.assertIn('8.8.*.*', share)
+        for needle in ('8.8.8.8', 'host1', '1.2.3.4', '线路', '\n  DNS ─', '明细'):
+            self.assertNotIn(needle, share, needle)
+        self.assertIn('每格一个目标', share)
+        self.assertTrue(share.rstrip().endswith('github.com/YePiXpert/splitcheck'), share[-200:])
+        # --no-mask 时不打码
+        self.assertIn('8.8.8.8', plain(self.run_report('MASK=0 USE_COLOR=2 REPORT_SHARE=1 report_text')))
+
+    def test_render_svg(self):
+        import xml.dom.minidom
+        self.analyze(rows(*self.calibration(), self.direct()), [('ai', 'a.example')])
+        svg = self.run_report('USE_COLOR=2 REPORT_SHARE=1 report_text > "$WORK/x.ansi"\nrender_svg "$WORK/x.ansi" splitcheck')
+        doc = xml.dom.minidom.parseString(svg.encode('utf-8'))
+        root = doc.documentElement
+        self.assertEqual(root.tagName, 'svg')
+        self.assertGreaterEqual(int(root.getAttribute('width')), 695)
+        texts = [t.firstChild.data for t in doc.getElementsByTagName('text') if t.firstChild]
+        # 每个字单独一个 text，汉字也是一个一个的；框线和方块画成了路径，不是文字
+        for ch in ('分', '流', '检', '测', 'A', 'I'):
+            self.assertIn(ch, texts, ch)
+        for ch in ('─', '│', '■', '✓'):
+            self.assertNotIn(ch, texts, ch)
+        self.assertTrue(doc.getElementsByTagName('path'))
+        # 结论的色块（无分流是绿色）画成了背景
+        self.assertIn('#5fd787', [r.getAttribute('fill') for r in doc.getElementsByTagName('rect')])
+
 
 class IntegrationTests(unittest.TestCase):
     """用假的 curl、mtr、dig、getent 跑完整流程。"""
@@ -1670,6 +1710,30 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn('说明', result.stdout)
         for needle in ('分享摘要', 'splitcheck 分流检测 ·', 'Markdown', 'report.md'):
             self.assertNotIn(needle, result.stdout + result.stderr)
+
+    def test_image_is_saved(self):
+        import xml.dom.minidom
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = subprocess.run([BASH, posix(SCRIPT), *self.common(), '-i'], text=True, encoding='utf-8',
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                                env=self.env(), cwd=self.dir, timeout=RUN_TIMEOUT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('说明', result.stdout)
+        self.assertIn('图片已保存', result.stderr)
+        images = sorted(self.dir.glob('splitcheck-*'))
+        self.assertEqual(len(images), 1, images)
+        image = images[0]
+        self.assertIn(str(image.name), result.stderr)
+        fonts = subprocess.run(['fc-list', ':lang=zh', 'family'], stdout=subprocess.PIPE, text=True).stdout \
+            if shutil.which('fc-list') else ''
+        if shutil.which('rsvg-convert') and fonts.strip():
+            # 有 rsvg-convert 和中文字体（CI 的 linux 任务装了）就必须转出 PNG，不能悄悄退回 SVG
+            self.assertEqual(image.suffix, '.png', result.stderr)
+            self.assertEqual(image.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
+        else:
+            self.assertEqual(image.suffix, '.svg')
+            xml.dom.minidom.parse(str(image))
+            self.assertNotIn('8.8.8.8', image.read_text(encoding='utf-8'))
 
     def test_low_resource_flag(self):
         self.state_file('exit_for', 'default 8.8.8.8\n')

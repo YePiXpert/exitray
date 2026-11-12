@@ -68,6 +68,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/sp
 | 赶时间：不测 DNS 触发和 SNI，约 3 分钟 | `-y --no-dns-test --no-sniff` |
 | 小内存 VPS：降低并发 | `-L` |
 | 检查节点（xray、sing-box）自己的分流 | `-x socks5h://127.0.0.1:1080` |
+| 存一张概览图片发给别人 | `-i` |
 | 发几行摘要给别人 | `-s` |
 | 把完整表格贴到论坛 | `-m` |
 
@@ -78,7 +79,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 ```
 
 > [!NOTE]
-> 需要 bash 4+、curl 和 awk。探测路由要 mtr（或 traceroute、tracepath），触发测试要 dig。缺了的话，脚本开头会用系统的包管理器装一次（apt、dnf、yum、apk、pacman、zypper，要 root 或免密 sudo）；不想装就加 `--no-install`，对应的检查会跳过。
+> 需要 bash 4+、curl 和 awk。探测路由要 mtr（或 traceroute、tracepath），触发测试要 dig，加了 `-i` 还要 rsvg-convert 和中文字体。缺了的话，脚本开头会用系统的包管理器装一次（apt、dnf、yum、apk、pacman、zypper，要 root 或免密 sudo）；不想装就加 `--no-install`，对应的检查会跳过。
 >
 > 除了这一次安装，全程只读：不改系统配置，临时文件放在 mktemp 目录，退出时删除。
 
@@ -132,7 +133,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 <summary>同一份报告的纯文本版</summary>
 
 ```text
-  ┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─   分流检测报告  v2.1.0
+  ┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─   分流检测报告  v2.2.0
   └─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐   vps1 · 2026-11-08 21:06:38
   └─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴   142 个目标 · 地区 tw · 用时 3 分 56 秒
 
@@ -300,9 +301,17 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 
 ## 分享结果
 
-终端里的报告是给自己看的，里面有完整的出口 IP、主机名和路由。要发给别人，换成下面两种输出：IP 只保留前两段，不带主机名和路由。它们和文字报告是同一次检测的不同输出，要哪种就加哪个参数。
+终端里的报告是给自己看的，里面有完整的出口 IP、主机名和路由。要发给别人，用下面三种办法：IP 只保留前两段，不带主机名和路由。
 
-加 `-s` 输出十几行摘要，适合贴在聊天里：
+加 `-i`，终端里照常出报告，另外把概览存成一张 PNG，就是本页最上面那张图从抬头到分类概览的部分，手机一屏看得完：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh) -i
+```
+
+图片存在当前目录，文件名带时间，报告结尾会写出完整路径，用 SFTP 下载就行。只加 `-i` 时照样显示启动菜单。转 PNG 要 `rsvg-convert` 和中文字体，缺了会和 mtr、dig 一样自动装一次；装不了或加了 `--no-install`，就存成 SVG，用浏览器打开。
+
+`-s` 和 `-m` 是文字报告之外的另两种输出，要哪种就加哪个参数。加 `-s` 输出十几行摘要，适合贴在聊天里：
 
 ```bash
 bash splitcheck.sh -s
@@ -346,7 +355,7 @@ bash splitcheck.sh -y --color | less -R
 ```
 
 > [!WARNING]
-> `-s` 和 `-m` 默认打码，要完整 IP 得加 `--no-mask`。终端里的完整报告没有打码，截图或复制出去之前留意这一点。
+> `-i`、`-s` 和 `-m` 默认打码，要完整 IP 得加 `--no-mask`。终端里的完整报告没有打码，截图或复制出去之前留意这一点。
 
 ## 怎么判断的
 
@@ -429,7 +438,8 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 | `-j`, `--json` | 输出 JSON |
 | `-m`, `--markdown` | 输出方便分享的 Markdown 报告，IP 默认打码 |
 | `-s`, `--summary` | 只输出十几行可直接复制的摘要，IP 默认打码 |
-| `--no-mask` | `-s` 和 `-m` 的输出里显示完整 IP |
+| `-i`, `--image` | 另存一张概览图片（PNG），IP 默认打码 |
+| `--no-mask` | `-i`、`-s` 和 `-m` 的输出里显示完整 IP |
 | `--exit-code` | 用退出码表示结论，方便 cron 和监控 |
 | `--color` | 输出不是终端时也用颜色，例如接 `less -R` 或 `tee` |
 | `--no-color` | 不用颜色。设了环境变量 `NO_COLOR` 也一样 |
