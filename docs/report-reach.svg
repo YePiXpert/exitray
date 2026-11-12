@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="695" height="454" viewBox="0 0 695 454" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14">
+<rect x="0.5" y="0.5" width="694" height="453" rx="10" fill="#14161b" stroke="#262a33"/>
+<text x="36.8" y="31.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">连通</text>
+<path d="M78.80,27.50L87.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,27.50L95.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M95.60,27.50L104.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M104.00,27.50L112.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,27.50L120.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M120.80,27.50L129.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,27.50L137.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,27.50L146.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M146.00,27.50L154.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,27.50L162.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,27.50L171.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,27.50L179.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M179.60,27.50L188.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M188.00,27.50L196.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M196.40,27.50L204.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,27.50L213.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M213.20,27.50L221.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M221.60,27.50L230.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,27.50L238.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M238.40,27.50L246.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,27.50L255.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,27.50L263.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,27.50L272.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M272.00,27.50L280.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M280.40,27.50L288.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M288.80,27.50L297.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M297.20,27.50L305.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M305.60,27.50L314.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M314.00,27.50L322.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M322.40,27.50L330.80,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M330.80,27.50L339.20,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M339.20,27.50L347.60,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M347.60,27.50L356.00,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M356.00,27.50L364.40,27.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="372.8" y="31.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">连上次数</text>
+<text x="440.0" y="31.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">/</text>
+<text x="448.4" y="31.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">尝试次数</text>
+<circle cx="528.20" cy="28.00" r="1.05" fill="#8a8a8a"/>
+<text x="540.8" y="31.7" textLength="134.4" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">复测两次才下结论</text>
+<text x="36.8" y="50.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">网段</text>
+<text x="188.0" y="50.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">结果</text>
+<text x="305.6" y="50.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">连通</text>
+<text x="356.0" y="50.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">路由</text>
+<text x="456.8" y="50.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">目标</text>
+<text x="36.8" y="69.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">103.117.4.0/24</text>
+<path d="M189.30,62.60L195.10,68.40M195.10,62.60L189.30,68.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="69.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="69.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/4</text>
+<text x="356.0" y="69.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="69.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="69.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="69.7" textLength="75.6" lengthAdjust="spacing" fill="#d7dae0">shopee.tw</text>
+<text x="36.8" y="88.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">104.18.11.0/24</text>
+<path d="M189.30,81.60L195.10,87.40M195.10,81.60L189.30,87.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="88.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="88.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/3</text>
+<text x="356.0" y="88.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="88.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.ruten.com.tw</text>
+<text x="36.8" y="107.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">203.75.129.0/24</text>
+<path d="M189.30,100.60L195.10,106.40M195.10,100.60L189.30,106.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="107.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="107.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/5</text>
+<text x="356.0" y="107.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="107.7" textLength="159.6" lengthAdjust="spacing" fill="#d7dae0">hamivideo.hinet.net</text>
+<text x="36.8" y="126.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">57.144.20.0/24</text>
+<path d="M189.30,119.60L195.10,125.40M195.10,119.60L189.30,125.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="126.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="126.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/3</text>
+<text x="356.0" y="126.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="126.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="126.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="126.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.facebook.com</text>
+<text x="36.8" y="145.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">57.144.144.0/24</text>
+<path d="M189.30,138.60L195.10,144.40M195.10,138.60L189.30,144.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="145.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="145.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/9</text>
+<text x="356.0" y="145.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="145.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="145.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="145.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.facebook.com</text>
+<text x="599.6" y="145.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="624.8" y="145.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">3</text>
+<text x="641.6" y="145.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="164.7" textLength="109.2" lengthAdjust="spacing" fill="#d7dae0">31.13.87.0/24</text>
+<path d="M189.30,157.60L195.10,163.40M195.10,157.60L189.30,163.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="164.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="164.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a">0/15</text>
+<text x="356.0" y="164.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="164.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="164.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="164.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.facebook.com</text>
+<text x="599.6" y="164.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="624.8" y="164.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">4</text>
+<text x="641.6" y="164.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="183.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">57.144.64.0/24</text>
+<path d="M189.30,176.60L195.10,182.40M195.10,176.60L189.30,182.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="183.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="183.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/9</text>
+<text x="356.0" y="183.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="183.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="183.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="183.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.facebook.com</text>
+<text x="599.6" y="183.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="624.8" y="183.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">3</text>
+<text x="641.6" y="183.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="202.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">57.144.145.0/24</text>
+<path d="M189.30,195.60L195.10,201.40M195.10,195.60L189.30,201.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="202.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="202.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/3</text>
+<text x="356.0" y="202.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="202.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="202.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="202.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.whatsapp.com</text>
+<text x="36.8" y="221.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">57.144.65.0/24</text>
+<path d="M189.30,214.60L195.10,220.40M195.10,214.60L189.30,220.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="221.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="221.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/4</text>
+<text x="356.0" y="221.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="221.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="221.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="221.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">web.whatsapp.com</text>
+<text x="36.8" y="240.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">147.92.185.0/24</text>
+<path d="M189.30,233.60L195.10,239.40M195.10,233.60L189.30,239.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="240.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="240.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/8</text>
+<text x="356.0" y="240.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="240.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="240.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="240.7" textLength="151.2" lengthAdjust="spacing" fill="#d7dae0">legy.line-apps.com</text>
+<text x="616.4" y="240.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="641.6" y="240.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">2</text>
+<text x="658.4" y="240.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="259.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">43.223.23.0/24</text>
+<path d="M189.30,252.60L195.10,258.40M195.10,252.60L189.30,258.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="259.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="259.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/3</text>
+<text x="356.0" y="259.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="259.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="259.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="259.7" textLength="151.2" lengthAdjust="spacing" fill="#d7dae0">legy.line-apps.com</text>
+<text x="36.8" y="278.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">147.92.146.0/24</text>
+<path d="M189.30,271.60L195.10,277.40M195.10,271.60L189.30,277.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="278.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">连不上</text>
+<text x="305.6" y="278.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">0/8</text>
+<text x="356.0" y="278.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="278.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="278.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="278.7" textLength="151.2" lengthAdjust="spacing" fill="#d7dae0">legy.line-apps.com</text>
+<text x="616.4" y="278.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="641.6" y="278.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">2</text>
+<text x="658.4" y="278.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="297.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">147.136.172.0/24</text>
+<text x="188.0" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">!</text>
+<text x="204.8" y="297.7" textLength="67.2" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">部分不通</text>
+<text x="280.4" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="297.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/7</text>
+<text x="356.0" y="297.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="297.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="297.7" textLength="75.6" lengthAdjust="spacing" fill="#d7dae0">shopee.tw</text>
+<text x="540.8" y="297.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="566.0" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">2</text>
+<text x="582.8" y="297.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="316.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">104.18.10.0/24</text>
+<path d="M189.00,312.90L191.30,315.50L195.60,309.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="316.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="316.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/3</text>
+<text x="356.0" y="316.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="316.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.ruten.com.tw</text>
+<text x="36.8" y="335.7" textLength="84.0" lengthAdjust="spacing" fill="#d7dae0">57.145.x.x</text>
+<path d="M189.00,331.90L191.30,334.50L195.60,328.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="335.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="335.7" textLength="42.0" lengthAdjust="spacing" fill="#8a8a8a">13/13</text>
+<text x="356.0" y="335.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="335.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="335.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="335.7" textLength="151.2" lengthAdjust="spacing" fill="#d7dae0">graph.facebook.com</text>
+<text x="616.4" y="335.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">等</text>
+<text x="641.6" y="335.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">5</text>
+<text x="658.4" y="335.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个</text>
+<text x="36.8" y="354.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">157.240.11.0/24</text>
+<path d="M189.00,350.90L191.30,353.50L195.60,347.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="354.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="354.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/3</text>
+<text x="356.0" y="354.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="354.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">www.threads.com</text>
+<text x="36.8" y="373.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">57.144.92.0/24</text>
+<path d="M189.00,369.90L191.30,372.50L195.60,366.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="373.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="373.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">4/4</text>
+<text x="356.0" y="373.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="373.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">www.threads.com</text>
+<text x="36.8" y="392.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0">57.144.93.0/24</text>
+<path d="M189.00,388.90L191.30,391.50L195.60,385.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="392.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="392.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">5/5</text>
+<text x="356.0" y="392.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">-</text>
+<text x="456.8" y="392.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.whatsapp.com</text>
+<text x="36.8" y="411.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">147.92.243.0/24</text>
+<path d="M189.00,407.90L191.30,410.50L195.60,404.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="204.8" y="411.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="305.6" y="411.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/3</text>
+<text x="356.0" y="411.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
+<text x="381.2" y="411.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
+<text x="398.0" y="411.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">跳改道</text>
+<text x="456.8" y="411.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">line.me</text>
+<text x="36.8" y="430.7" textLength="134.4" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">改道后的下一跳：</text>
+<text x="171.2" y="430.7" textLength="92.4" lengthAdjust="spacing" fill="#8a8a8a">10.66.1.202</text>
+<text x="263.6" y="430.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">。每个</text>
+<text x="322.4" y="430.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">IP</text>
+<text x="347.6" y="430.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">的结果加</text>
+<text x="423.2" y="430.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">-v</text>
+<text x="448.4" y="430.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">查看</text>
+</svg>

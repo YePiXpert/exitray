@@ -1,386 +1,807 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="691" height="1001" viewBox="0 0 691 1001" font-family="'Cascadia Mono','SFMono-Regular',Consolas,'DejaVu Sans Mono','Noto Sans Mono CJK SC',monospace" font-size="14">
-<rect width="100%" height="100%" rx="10" fill="#16181d"/>
-<text x="34.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┌</text>
-<text x="43.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">─</text>
-<text x="51.6" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┐</text>
-<text x="60.0" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┌</text>
-<text x="68.4" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">─</text>
-<text x="76.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">┐</text>
-<text x="85.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">┬</text>
-<text x="110.4" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┬</text>
-<text x="118.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┌</text>
-<text x="127.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┬</text>
-<text x="135.6" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">┐</text>
-<text x="144.0" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">┌</text>
-<text x="152.4" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">─</text>
-<text x="160.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">┐</text>
-<text x="169.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┬</text>
-<text x="186.0" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┬</text>
-<text x="194.4" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┌</text>
-<text x="202.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">─</text>
-<text x="211.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">┐</text>
-<text x="219.6" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">┌</text>
-<text x="228.0" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">─</text>
-<text x="236.4" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┐</text>
-<text x="244.8" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┬</text>
-<text x="253.2" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┌</text>
-<text x="261.6" y="29.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">─</text>
-<text x="295.2" y="29.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">分流检测报告</text>
-<text x="412.8" y="29.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">v2.0.0</text>
-<text x="34.8" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">└</text>
-<text x="43.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">─</text>
-<text x="51.6" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┐</text>
-<text x="60.0" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">├</text>
-<text x="68.4" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">─</text>
-<text x="76.8" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">┘</text>
-<text x="85.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">│</text>
-<text x="110.4" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">│</text>
-<text x="127.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">│</text>
-<text x="144.0" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">│</text>
-<text x="169.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">├</text>
-<text x="177.6" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">─</text>
-<text x="186.0" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┤</text>
-<text x="194.4" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">├</text>
-<text x="202.8" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">┤</text>
-<text x="219.6" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">│</text>
-<text x="244.8" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">├</text>
-<text x="253.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┴</text>
-<text x="261.6" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┐</text>
-<text x="295.2" y="48.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">vps1</text>
-<text x="337.2" y="48.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="354.0" y="48.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">2026-11-08</text>
-<text x="446.4" y="48.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">21:06:38</text>
-<text x="34.8" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">└</text>
-<text x="43.2" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">─</text>
-<text x="51.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┘</text>
-<text x="60.0" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00d7d7">┴</text>
-<text x="85.2" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">┴</text>
-<text x="93.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afd7">─</text>
-<text x="102.0" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┘</text>
-<text x="110.4" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┴</text>
-<text x="127.2" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#00afff">┴</text>
-<text x="144.0" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">└</text>
-<text x="152.4" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">─</text>
-<text x="160.8" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#0087ff">┘</text>
-<text x="169.2" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┴</text>
-<text x="186.0" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">┴</text>
-<text x="194.4" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5f87ff">└</text>
-<text x="202.8" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">─</text>
-<text x="211.2" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">┘</text>
-<text x="219.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">└</text>
-<text x="228.0" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8787ff">─</text>
-<text x="236.4" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┘</text>
-<text x="244.8" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┴</text>
-<text x="261.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#af87ff">┴</text>
-<text x="295.2" y="67.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">142</text>
-<text x="328.8" y="67.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">个目标</text>
-<text x="387.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="404.4" y="67.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">地区</text>
-<text x="446.4" y="67.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">tw</text>
-<text x="471.6" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="488.4" y="67.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">用时</text>
-<text x="530.4" y="67.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">3</text>
-<text x="547.2" y="67.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">分</text>
-<text x="572.4" y="67.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">56</text>
-<text x="597.6" y="67.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">秒</text>
-<rect x="34.8" y="93.5" width="8.4" height="16" rx="2" fill="#ff5f5f"/>
-<rect x="43.2" y="93.5" width="50.4" height="16" rx="2" fill="#ff5f5f"/>
-<text x="43.2" y="105.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#000000" font-weight="700">有分流</text>
-<rect x="93.6" y="93.5" width="8.4" height="16" rx="2" fill="#ff5f5f"/>
-<text x="110.4" y="105.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">发现</text>
-<text x="152.4" y="105.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">3</text>
-<text x="169.2" y="105.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">个出口，其中</text>
-<text x="278.4" y="105.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">1</text>
-<text x="295.2" y="105.7" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">个不是默认运营商</text>
-<text x="34.8" y="143.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">╭</text>
-<text x="51.6" y="143.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">出口</text>
-<text x="93.6" y="143.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#585858">──────────╮</text>
-<text x="194.4" y="143.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">╭</text>
-<text x="211.2" y="143.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">DNS</text>
-<text x="244.8" y="143.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#585858">───────────╮</text>
-<text x="354.0" y="143.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">╭</text>
-<text x="370.8" y="143.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">连通</text>
-<text x="412.8" y="143.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#585858">──────────╮</text>
-<text x="513.6" y="143.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">╭</text>
-<text x="530.4" y="143.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">证据</text>
-<text x="572.4" y="143.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#585858">──────────╮</text>
-<text x="34.8" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="51.6" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ff5f5f">✗</text>
-<text x="68.4" y="162.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#ff5f5f">有分流</text>
-<text x="177.6" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="194.4" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="211.2" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">✓</text>
-<text x="228.0" y="162.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">正常</text>
-<text x="337.2" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="354.0" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="370.8" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">✓</text>
-<text x="387.6" y="162.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">正常</text>
-<text x="496.8" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="513.6" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="530.4" y="162.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">直接</text>
-<text x="572.4" y="162.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">105</text>
-<text x="606.0" y="162.7" textLength="42.0" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■</text>
-<text x="656.4" y="162.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="34.8" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="51.6" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">3</text>
-<text x="68.4" y="181.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">个出口</text>
-<text x="177.6" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="194.4" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="211.2" y="181.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">53</text>
-<text x="236.4" y="181.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">端口正常</text>
-<text x="337.2" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="354.0" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="370.8" y="181.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">没有</text>
-<text x="412.8" y="181.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">IP</text>
-<text x="438.0" y="181.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">被拦</text>
-<text x="496.8" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="513.6" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="530.4" y="181.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">推断</text>
-<text x="580.8" y="181.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">37</text>
-<text x="606.0" y="181.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#5fd7d7">■■</text>
-<text x="656.4" y="181.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="34.8" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="51.6" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">1</text>
-<text x="68.4" y="200.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">个不同运营商</text>
-<text x="177.6" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="194.4" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="211.2" y="200.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">DNS</text>
-<text x="244.8" y="200.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">触发</text>
-<text x="286.8" y="200.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">4/23</text>
-<text x="337.2" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="354.0" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="496.8" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="513.6" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="530.4" y="200.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">存疑</text>
-<text x="589.2" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">0</text>
-<text x="656.4" y="200.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#585858">│</text>
-<text x="34.8" y="219.7" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#585858">╰────────────────╯</text>
-<text x="194.4" y="219.7" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#585858">╰────────────────╯</text>
-<text x="354.0" y="219.7" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#585858">╰────────────────╯</text>
-<text x="513.6" y="219.7" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#585858">╰────────────────╯</text>
-<text x="34.8" y="257.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">!</text>
-<text x="51.6" y="257.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">按</text>
-<text x="76.8" y="257.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">IP</text>
-<text x="135.6" y="257.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">2</text>
-<text x="152.4" y="257.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">个目标按</text>
-<text x="228.0" y="257.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">IP</text>
-<text x="253.2" y="257.7" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">分流：同一个域名的几个</text>
-<text x="446.4" y="257.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">IP</text>
-<text x="471.6" y="257.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">走了不同出口</text>
-<text x="34.8" y="276.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">!</text>
-<text x="51.6" y="276.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">DNS</text>
-<text x="85.2" y="276.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">触发</text>
-<text x="135.6" y="276.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">13</text>
-<text x="160.8" y="276.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">个目标由明文</text>
-<text x="270.0" y="276.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="303.6" y="276.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">触发：同一个</text>
-<text x="412.8" y="276.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">IP</text>
-<text x="429.6" y="276.7" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">，明文查询之后换了出口</text>
-<text x="34.8" y="295.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">!</text>
-<text x="51.6" y="295.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">名单内</text>
-<text x="135.6" y="295.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">17</text>
-<text x="160.8" y="295.7" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">个目标在分流名单内：加密</text>
-<text x="370.8" y="295.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="404.4" y="295.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">下也走分流</text>
-<text x="34.8" y="333.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">出口</text>
-<text x="76.8" y="333.7" textLength="554.4" lengthAdjust="spacingAndGlyphs" fill="#585858">──────────────────────────────────────────────────────────────────</text>
-<text x="639.6" y="333.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">3</text>
-<text x="656.4" y="333.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">个</text>
-<rect x="34.8" y="340.5" width="8.4" height="16" rx="2" fill="#5fd787"/>
-<rect x="43.2" y="340.5" width="8.4" height="16" rx="2" fill="#5fd787"/>
-<text x="43.2" y="352.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#000000" font-weight="700">A</text>
-<rect x="51.6" y="340.5" width="8.4" height="16" rx="2" fill="#5fd787"/>
-<text x="68.4" y="352.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">默认</text>
-<text x="118.8" y="352.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">203.0.113.63</text>
-<text x="261.6" y="352.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">AS64500</text>
-<text x="328.8" y="352.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Example</text>
-<text x="396.0" y="352.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Broadband</text>
-<text x="118.8" y="371.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">TW</text>
-<text x="144.0" y="371.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">Taipei</text>
-<text x="202.8" y="371.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="219.6" y="371.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">回显</text>
-<text x="261.6" y="371.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">312</text>
-<text x="295.2" y="371.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">次</text>
-<text x="320.4" y="371.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="337.2" y="371.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">线路</text>
-<text x="379.2" y="371.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10.0.1.1</text>
-<text x="454.8" y="371.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">›</text>
-<text x="471.6" y="371.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">203.0.113.1</text>
-<rect x="34.8" y="378.5" width="8.4" height="16" rx="2" fill="#ffaf5f"/>
-<rect x="43.2" y="378.5" width="8.4" height="16" rx="2" fill="#ffaf5f"/>
-<text x="43.2" y="390.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#000000" font-weight="700">B</text>
-<rect x="51.6" y="378.5" width="8.4" height="16" rx="2" fill="#ffaf5f"/>
-<text x="118.8" y="390.7" textLength="117.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">198.51.100.125</text>
-<text x="261.6" y="390.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">AS64501</text>
-<text x="328.8" y="390.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Example</text>
-<text x="396.0" y="390.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Transit</text>
-<text x="471.6" y="390.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">非默认运营商</text>
-<text x="118.8" y="409.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">TW</text>
-<text x="144.0" y="409.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">Taipei</text>
-<text x="202.8" y="409.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="219.6" y="409.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">标记为机房</text>
-<text x="312.0" y="409.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="328.8" y="409.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">回显</text>
-<text x="370.8" y="409.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">35</text>
-<text x="396.0" y="409.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">次</text>
-<text x="421.2" y="409.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="438.0" y="409.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">线路</text>
-<text x="480.0" y="409.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10.0.2.1</text>
-<text x="555.6" y="409.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">›</text>
-<text x="572.4" y="409.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">172.18.0.1</text>
-<rect x="34.8" y="416.5" width="8.4" height="16" rx="2" fill="#d787ff"/>
-<rect x="43.2" y="416.5" width="8.4" height="16" rx="2" fill="#d787ff"/>
-<text x="43.2" y="428.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#000000" font-weight="700">C</text>
-<rect x="51.6" y="416.5" width="8.4" height="16" rx="2" fill="#d787ff"/>
-<text x="118.8" y="428.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">192.0.2.36</text>
-<text x="261.6" y="428.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">AS64500</text>
-<text x="328.8" y="428.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Example</text>
-<text x="396.0" y="428.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Broadband</text>
-<text x="118.8" y="447.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">TW</text>
-<text x="144.0" y="447.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">Taipei</text>
-<text x="202.8" y="447.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="219.6" y="447.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">回显</text>
-<text x="261.6" y="447.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">12</text>
-<text x="286.8" y="447.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">次</text>
-<text x="312.0" y="447.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="328.8" y="447.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">线路</text>
-<text x="370.8" y="447.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10.0.2.1</text>
-<text x="446.4" y="447.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">›</text>
-<text x="463.2" y="447.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10.42.0.1</text>
-<text x="34.8" y="485.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">分类</text>
-<text x="76.8" y="485.7" textLength="487.2" lengthAdjust="spacingAndGlyphs" fill="#585858">──────────────────────────────────────────────────────────</text>
-<text x="572.4" y="485.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">每格一个目标</text>
-<text x="177.6" y="504.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">系统</text>
-<text x="219.6" y="504.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">DNS</text>
-<text x="354.0" y="504.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">加密</text>
-<text x="396.0" y="504.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">DNS</text>
-<text x="34.8" y="523.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">AI</text>
-<text x="135.6" y="523.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">15</text>
-<text x="177.6" y="523.7" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■</text>
-<text x="286.8" y="523.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d787ff">■■</text>
-<text x="354.0" y="523.7" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■</text>
-<text x="463.2" y="523.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d787ff">■■</text>
-<text x="34.8" y="542.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Meta</text>
-<text x="135.6" y="542.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10</text>
-<text x="177.6" y="542.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■■■■■■■■■■</text>
-<text x="354.0" y="542.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="429.6" y="542.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■</text>
-<text x="34.8" y="561.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Telegram</text>
-<text x="144.0" y="561.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">8</text>
-<text x="177.6" y="561.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■■■■■■■■</text>
-<text x="354.0" y="561.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■■■■■■■■</text>
-<text x="34.8" y="580.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">社媒</text>
-<text x="135.6" y="580.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">13</text>
-<text x="177.6" y="580.7" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■</text>
-<text x="354.0" y="580.7" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■</text>
-<text x="34.8" y="599.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Google</text>
-<text x="144.0" y="599.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">5</text>
-<text x="177.6" y="599.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■</text>
-<text x="202.8" y="599.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d787ff">■■</text>
-<text x="354.0" y="599.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■</text>
-<text x="379.2" y="599.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d787ff">■■</text>
-<text x="34.8" y="618.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">流媒体</text>
-<text x="135.6" y="618.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">11</text>
-<text x="177.6" y="618.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■</text>
-<text x="354.0" y="618.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■</text>
-<text x="34.8" y="637.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">金融支付</text>
-<text x="135.6" y="637.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">11</text>
-<text x="177.6" y="637.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■</text>
-<text x="354.0" y="637.7" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■</text>
-<text x="34.8" y="656.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">虚拟币</text>
-<text x="135.6" y="656.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">15</text>
-<text x="177.6" y="656.7" textLength="126.0" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■■■</text>
-<text x="354.0" y="656.7" textLength="126.0" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■■■</text>
-<text x="34.8" y="675.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">银行</text>
-<text x="135.6" y="675.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10</text>
-<text x="177.6" y="675.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■■■■■■■■■■</text>
-<text x="354.0" y="675.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■</text>
-<text x="404.4" y="675.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■■■■</text>
-<text x="34.8" y="694.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">电商购物</text>
-<text x="135.6" y="694.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">17</text>
-<text x="177.6" y="694.7" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■■■■■</text>
-<text x="354.0" y="694.7" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■■■■■■■■■</text>
-<text x="34.8" y="713.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">开发者</text>
-<text x="144.0" y="713.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">9</text>
-<text x="177.6" y="713.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="354.0" y="713.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="34.8" y="732.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">游戏</text>
-<text x="144.0" y="732.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">9</text>
-<text x="177.6" y="732.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="354.0" y="732.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="34.8" y="751.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">本地服务</text>
-<text x="144.0" y="751.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">9</text>
-<text x="177.6" y="751.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="354.0" y="751.7" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■■■■■■■■■</text>
-<text x="177.6" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">■</text>
-<text x="194.4" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">A</text>
-<text x="211.2" y="770.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">默认</text>
-<text x="270.0" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">■</text>
-<text x="286.8" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">B</text>
-<text x="320.4" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d787ff">■</text>
-<text x="337.2" y="770.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">C</text>
-<text x="34.8" y="808.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="700">DNS</text>
-<text x="68.4" y="808.7" textLength="445.2" lengthAdjust="spacingAndGlyphs" fill="#585858">─────────────────────────────────────────────────────</text>
-<text x="522.0" y="808.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">系统解析器</text>
-<text x="614.4" y="808.7" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">8.8.8.8</text>
-<text x="34.8" y="827.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">53</text>
-<text x="60.0" y="827.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">端口</text>
-<text x="127.2" y="827.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">✓</text>
-<text x="144.0" y="827.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">未发现劫持</text>
-<text x="34.8" y="846.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="68.4" y="846.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">屏蔽</text>
-<text x="127.2" y="846.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">✓</text>
-<text x="144.0" y="846.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">系统</text>
-<text x="186.0" y="846.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="219.6" y="846.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">和加密</text>
-<text x="278.4" y="846.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="312.0" y="846.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">都能解析</text>
-<text x="34.8" y="865.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">触发测试</text>
-<text x="127.2" y="865.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffd75f">!</text>
-<text x="144.0" y="865.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">触发</text>
-<text x="186.0" y="865.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">4</text>
-<text x="202.8" y="865.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">/</text>
-<text x="219.6" y="865.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">可测</text>
-<text x="261.6" y="865.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">23</text>
-<text x="278.4" y="865.7" textLength="252.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">：明文查询之后出口变了，上游按</text>
-<text x="538.8" y="865.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">DNS</text>
-<text x="572.4" y="865.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">应答写名单</text>
-<text x="144.0" y="884.7" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">www.facebook.com</text>
-<text x="404.4" y="884.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">57.144.248.1</text>
-<text x="538.8" y="884.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">A</text>
-<text x="555.6" y="884.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">→</text>
-<text x="572.4" y="884.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">B</text>
-<text x="144.0" y="903.7" textLength="159.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">accounts.google.com</text>
-<text x="404.4" y="903.7" textLength="117.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">192.178.226.84</text>
-<text x="538.8" y="903.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">A</text>
-<text x="555.6" y="903.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">→</text>
-<text x="572.4" y="903.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d787ff">C</text>
-<text x="144.0" y="922.7" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">www.instagram.com</text>
-<text x="404.4" y="922.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">57.144.248.9</text>
-<text x="538.8" y="922.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">A</text>
-<text x="555.6" y="922.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">→</text>
-<text x="572.4" y="922.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">B</text>
-<text x="144.0" y="941.7" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">graph.facebook.com</text>
-<text x="404.4" y="941.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">57.144.248.3</text>
-<text x="538.8" y="941.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd787">A</text>
-<text x="555.6" y="941.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">→</text>
-<text x="572.4" y="941.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f">B</text>
-<text x="144.0" y="960.7" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">另有</text>
-<text x="186.0" y="960.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10</text>
-<text x="211.2" y="960.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">个测不了：</text>
-<text x="295.2" y="960.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">10</text>
-<text x="320.4" y="960.7" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">个拿不到回显</text>
-<text x="34.8" y="979.7" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">查询来源</text>
-<text x="127.2" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#8a8a8a">·</text>
-<text x="144.0" y="979.7" textLength="84.0" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Cloudflare</text>
-<text x="236.4" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">A</text>
-<text x="253.2" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">·</text>
-<text x="270.0" y="979.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Akamai</text>
-<text x="328.8" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">A</text>
-<text x="345.6" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">·</text>
-<text x="362.4" y="979.7" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Google</text>
-<text x="421.2" y="979.7" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">A</text>
-<text x="429.6" y="979.7" textLength="16.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">（</text>
-<text x="446.4" y="979.7" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">UDP</text>
-<text x="471.6" y="979.7" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">，权威服务器看到的来源）</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="695" height="826" viewBox="0 0 695 826" font-family="ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace" font-size="14">
+<rect x="0.5" y="0.5" width="694" height="825" rx="10" fill="#14161b" stroke="#262a33"/>
+<path d="M0.5,30H694.7" stroke="#262a33"/>
+<circle cx="20" cy="15.0" r="5.5" fill="#ff5f57"/>
+<circle cx="38" cy="15.0" r="5.5" fill="#febc2e"/>
+<circle cx="56" cy="15.0" r="5.5" fill="#28c840"/>
+<text x="348" y="19.5" text-anchor="middle" fill="#8b90a0" font-size="12.5">splitcheck · 有分流的线路</text>
+<path d="M45.20,57.50L41.00,57.50L41.00,67.00" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M45.20,57.50L53.60,57.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M53.60,57.50L57.80,57.50L57.80,67.00" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M70.40,57.50L66.20,57.50L66.20,67.00" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M70.40,57.50L78.80,57.50" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M78.80,57.50L83.00,57.50L83.00,67.00" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,57.50L95.60,57.50M91.40,57.50L91.40,67.00" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,57.50L120.80,57.50M116.60,57.50L116.60,67.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,57.50L125.00,57.50L125.00,67.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,57.50L137.60,57.50M133.40,57.50L133.40,67.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,57.50L141.80,57.50L141.80,67.00" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,57.50L150.20,57.50L150.20,67.00" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,57.50L162.80,57.50" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,57.50L167.00,57.50L167.00,67.00" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,57.50L179.60,57.50M175.40,57.50L175.40,67.00" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M188.00,57.50L196.40,57.50M192.20,57.50L192.20,67.00" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,57.50L200.60,57.50L200.60,67.00" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,57.50L213.20,57.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M213.20,57.50L217.40,57.50L217.40,67.00" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,57.50L225.80,57.50L225.80,67.00" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,57.50L238.40,57.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M238.40,57.50L242.60,57.50L242.60,67.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,57.50L255.20,57.50M251.00,57.50L251.00,67.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,57.50L259.40,57.50L259.40,67.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,57.50L272.00,57.50" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="297.2" y="61.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">分流检测报告</text>
+<text x="414.8" y="61.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">v2.0.0</text>
+<path d="M41.00,67.00L41.00,76.50L45.20,76.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M45.20,76.50L53.60,76.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M53.60,76.50L57.80,76.50L57.80,86.00" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M66.20,67.00L66.20,86.00M66.20,76.50L70.40,76.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M70.40,76.50L78.80,76.50" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M83.00,67.00L83.00,76.50L78.80,76.50" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M91.40,67.00L91.40,86.00" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M116.60,67.00L116.60,86.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M133.40,67.00L133.40,86.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M150.20,67.00L150.20,86.00" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M175.40,67.00L175.40,86.00M175.40,76.50L179.60,76.50" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M179.60,76.50L188.00,76.50" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M192.20,67.00L192.20,86.00M192.20,76.50L188.00,76.50" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,67.00L200.60,86.00M200.60,76.50L204.80,76.50" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M209.00,67.00L209.00,86.00M209.00,76.50L204.80,76.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M225.80,67.00L225.80,86.00" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M251.00,67.00L251.00,86.00M251.00,76.50L255.20,76.50" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,76.50L263.60,76.50M259.40,76.50L259.40,67.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,76.50L267.80,76.50L267.80,86.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="297.2" y="80.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0">vps1</text>
+<circle cx="343.40" cy="77.00" r="1.05" fill="#8a8a8a"/>
+<text x="356.0" y="80.7" textLength="84.0" lengthAdjust="spacing" fill="#8a8a8a">2026-11-08</text>
+<text x="448.4" y="80.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a">21:06:38</text>
+<path d="M41.00,86.00L41.00,95.50L45.20,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M45.20,95.50L53.60,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M57.80,86.00L57.80,95.50L53.60,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M62.00,95.50L70.40,95.50M66.20,95.50L66.20,86.00" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,95.50L95.60,95.50M91.40,95.50L91.40,86.00" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M95.60,95.50L104.00,95.50" fill="none" stroke="#00afd7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M108.20,86.00L108.20,95.50L104.00,95.50" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,95.50L120.80,95.50M116.60,95.50L116.60,86.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,95.50L137.60,95.50M133.40,95.50L133.40,86.00" fill="none" stroke="#00afff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M150.20,86.00L150.20,95.50L154.40,95.50" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,95.50L162.80,95.50" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M167.00,86.00L167.00,95.50L162.80,95.50" fill="none" stroke="#0087ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,95.50L179.60,95.50M175.40,95.50L175.40,86.00" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M188.00,95.50L196.40,95.50M192.20,95.50L192.20,86.00" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,86.00L200.60,95.50L204.80,95.50" fill="none" stroke="#5f87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,95.50L213.20,95.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M217.40,86.00L217.40,95.50L213.20,95.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M225.80,86.00L225.80,95.50L230.00,95.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,95.50L238.40,95.50" fill="none" stroke="#8787ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M242.60,86.00L242.60,95.50L238.40,95.50" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,95.50L255.20,95.50M251.00,95.50L251.00,86.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,95.50L272.00,95.50M267.80,95.50L267.80,86.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="297.2" y="99.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">142</text>
+<text x="330.8" y="99.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">个目标</text>
+<circle cx="393.80" cy="96.00" r="1.05" fill="#8a8a8a"/>
+<text x="406.4" y="99.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">地区</text>
+<text x="448.4" y="99.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">tw</text>
+<circle cx="477.80" cy="96.00" r="1.05" fill="#8a8a8a"/>
+<text x="490.4" y="99.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">用时</text>
+<text x="532.4" y="99.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">3</text>
+<text x="549.2" y="99.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">分</text>
+<text x="574.4" y="99.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">56</text>
+<text x="599.6" y="99.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">秒</text>
+<rect x="36.8" y="125.5" width="67.2" height="16" rx="3" fill="#ff5f5f"/>
+<text x="45.2" y="137.7" textLength="50.4" lengthAdjust="spacing" fill="#000000" font-size="15.4" font-weight="700">有分流</text>
+<text x="112.4" y="137.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">发现</text>
+<text x="154.4" y="137.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">3</text>
+<text x="171.2" y="137.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">个出口，其中</text>
+<text x="280.4" y="137.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">1</text>
+<text x="297.2" y="137.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">个不是默认运营商</text>
+<path d="M45.20,171.50L44.78,171.50Q41.00,171.50 41.00,175.28L41.00,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="53.6" y="175.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">出口</text>
+<path d="M95.60,171.50L104.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M104.00,171.50L112.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,171.50L120.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M120.80,171.50L129.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,171.50L137.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,171.50L146.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M146.00,171.50L154.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,171.50L162.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,171.50L171.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,171.50L179.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M179.60,171.50L180.02,171.50Q183.80,171.50 183.80,175.28L183.80,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,171.50L204.38,171.50Q200.60,171.50 200.60,175.28L200.60,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="213.2" y="175.7" textLength="25.2" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">DNS</text>
+<path d="M246.80,171.50L255.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,171.50L263.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,171.50L272.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M272.00,171.50L280.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M280.40,171.50L288.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M288.80,171.50L297.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M297.20,171.50L305.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M305.60,171.50L314.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M314.00,171.50L322.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M322.40,171.50L330.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M330.80,171.50L339.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M339.20,171.50L339.62,171.50Q343.40,171.50 343.40,175.28L343.40,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M364.40,171.50L363.98,171.50Q360.20,171.50 360.20,175.28L360.20,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="372.8" y="175.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">连通</text>
+<path d="M414.80,171.50L423.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M423.20,171.50L431.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M431.60,171.50L440.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M440.00,171.50L448.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M448.40,171.50L456.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M456.80,171.50L465.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M465.20,171.50L473.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M473.60,171.50L482.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M482.00,171.50L490.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M490.40,171.50L498.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M498.80,171.50L499.22,171.50Q503.00,171.50 503.00,175.28L503.00,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M524.00,171.50L523.58,171.50Q519.80,171.50 519.80,175.28L519.80,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="532.4" y="175.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">证据</text>
+<path d="M574.40,171.50L582.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M582.80,171.50L591.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M591.20,171.50L599.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M599.60,171.50L608.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M608.00,171.50L616.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M616.40,171.50L624.80,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M624.80,171.50L633.20,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M633.20,171.50L641.60,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M641.60,171.50L650.00,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M650.00,171.50L658.40,171.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M658.40,171.50L658.82,171.50Q662.60,171.50 662.60,175.28L662.60,181.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M41.00,181.00L41.00,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M54.90,187.60L60.70,193.40M60.70,187.60L54.90,193.40" stroke-width="1.6" fill="none" stroke="#ff5f5f" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="70.4" y="194.7" textLength="50.4" lengthAdjust="spacing" fill="#ff5f5f" font-size="15.4">有分流</text>
+<path d="M183.80,181.00L183.80,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,181.00L200.60,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M214.20,190.90L216.50,193.50L220.80,187.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="230.0" y="194.7" textLength="33.6" lengthAdjust="spacing" fill="#5fd787" font-size="15.4">正常</text>
+<path d="M343.40,181.00L343.40,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M360.20,181.00L360.20,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M373.80,190.90L376.10,193.50L380.40,187.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="389.6" y="194.7" textLength="33.6" lengthAdjust="spacing" fill="#5fd787" font-size="15.4">正常</text>
+<path d="M503.00,181.00L503.00,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M519.80,181.00L519.80,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="532.4" y="194.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">直接</text>
+<text x="574.4" y="194.7" textLength="25.2" lengthAdjust="spacing" fill="#d7dae0">105</text>
+<rect x="609.00" y="187.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="617.40" y="187.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="625.80" y="187.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="634.20" y="187.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="642.60" y="187.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<path d="M662.60,181.00L662.60,200.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M41.00,200.00L41.00,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="53.6" y="213.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">3</text>
+<text x="70.4" y="213.7" textLength="50.4" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个出口</text>
+<path d="M183.80,200.00L183.80,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,200.00L200.60,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="213.2" y="213.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">53</text>
+<text x="238.4" y="213.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">端口正常</text>
+<path d="M343.40,200.00L343.40,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M360.20,200.00L360.20,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="372.8" y="213.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">没有</text>
+<text x="414.8" y="213.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">IP</text>
+<text x="440.0" y="213.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">被拦</text>
+<path d="M503.00,200.00L503.00,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M519.80,200.00L519.80,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="532.4" y="213.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">推断</text>
+<text x="582.8" y="213.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">37</text>
+<rect x="609.00" y="206.80" width="6.4" height="6.4" rx="1" fill="#5fd7d7"/>
+<rect x="617.40" y="206.80" width="6.4" height="6.4" rx="1" fill="#5fd7d7"/>
+<path d="M662.60,200.00L662.60,219.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M41.00,219.00L41.00,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="53.6" y="232.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">1</text>
+<text x="70.4" y="232.7" textLength="100.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">个不同运营商</text>
+<path d="M183.80,219.00L183.80,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,219.00L200.60,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="213.2" y="232.7" textLength="25.2" lengthAdjust="spacing" fill="#ffd75f">DNS</text>
+<text x="246.8" y="232.7" textLength="33.6" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">触发</text>
+<text x="288.8" y="232.7" textLength="33.6" lengthAdjust="spacing" fill="#ffd75f">4/23</text>
+<path d="M343.40,219.00L343.40,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M360.20,219.00L360.20,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M503.00,219.00L503.00,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M519.80,219.00L519.80,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="532.4" y="232.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">存疑</text>
+<text x="591.2" y="232.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">0</text>
+<path d="M662.60,219.00L662.60,238.00" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M41.00,238.00L41.00,243.72Q41.00,247.50 44.78,247.50L45.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M45.20,247.50L53.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M53.60,247.50L62.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M62.00,247.50L70.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M70.40,247.50L78.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M78.80,247.50L87.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,247.50L95.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M95.60,247.50L104.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M104.00,247.50L112.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,247.50L120.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M120.80,247.50L129.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,247.50L137.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,247.50L146.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M146.00,247.50L154.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,247.50L162.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,247.50L171.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,247.50L179.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M183.80,238.00L183.80,243.72Q183.80,247.50 180.02,247.50L179.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M200.60,238.00L200.60,243.72Q200.60,247.50 204.38,247.50L204.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,247.50L213.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M213.20,247.50L221.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M221.60,247.50L230.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,247.50L238.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M238.40,247.50L246.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,247.50L255.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,247.50L263.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,247.50L272.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M272.00,247.50L280.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M280.40,247.50L288.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M288.80,247.50L297.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M297.20,247.50L305.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M305.60,247.50L314.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M314.00,247.50L322.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M322.40,247.50L330.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M330.80,247.50L339.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M343.40,238.00L343.40,243.72Q343.40,247.50 339.62,247.50L339.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M360.20,238.00L360.20,243.72Q360.20,247.50 363.98,247.50L364.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M364.40,247.50L372.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M372.80,247.50L381.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M381.20,247.50L389.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M389.60,247.50L398.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M398.00,247.50L406.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M406.40,247.50L414.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M414.80,247.50L423.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M423.20,247.50L431.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M431.60,247.50L440.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M440.00,247.50L448.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M448.40,247.50L456.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M456.80,247.50L465.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M465.20,247.50L473.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M473.60,247.50L482.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M482.00,247.50L490.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M490.40,247.50L498.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M503.00,238.00L503.00,243.72Q503.00,247.50 499.22,247.50L498.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M519.80,238.00L519.80,243.72Q519.80,247.50 523.58,247.50L524.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M524.00,247.50L532.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M532.40,247.50L540.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M540.80,247.50L549.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M549.20,247.50L557.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M557.60,247.50L566.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M566.00,247.50L574.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M574.40,247.50L582.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M582.80,247.50L591.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M591.20,247.50L599.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M599.60,247.50L608.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M608.00,247.50L616.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M616.40,247.50L624.80,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M624.80,247.50L633.20,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M633.20,247.50L641.60,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M641.60,247.50L650.00,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M650.00,247.50L658.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M662.60,238.00L662.60,243.72Q662.60,247.50 658.82,247.50L658.40,247.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="36.8" y="289.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">!</text>
+<text x="53.6" y="289.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">按</text>
+<text x="78.8" y="289.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f">IP</text>
+<text x="137.6" y="289.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">2</text>
+<text x="154.4" y="289.7" textLength="67.2" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个目标按</text>
+<text x="230.0" y="289.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">IP</text>
+<text x="255.2" y="289.7" textLength="184.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">分流：同一个域名的几个</text>
+<text x="448.4" y="289.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">IP</text>
+<text x="473.6" y="289.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">走了不同出口</text>
+<text x="36.8" y="308.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">!</text>
+<text x="53.6" y="308.7" textLength="25.2" lengthAdjust="spacing" fill="#ffd75f">DNS</text>
+<text x="87.2" y="308.7" textLength="33.6" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">触发</text>
+<text x="137.6" y="308.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">13</text>
+<text x="162.8" y="308.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个目标由明文</text>
+<text x="272.0" y="308.7" textLength="25.2" lengthAdjust="spacing" fill="#d7dae0">DNS</text>
+<text x="305.6" y="308.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">触发：同一个</text>
+<text x="414.8" y="308.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">IP</text>
+<text x="431.6" y="308.7" textLength="184.8" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">，明文查询之后换了出口</text>
+<text x="36.8" y="327.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">!</text>
+<text x="53.6" y="327.7" textLength="50.4" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">名单内</text>
+<text x="137.6" y="327.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">17</text>
+<text x="162.8" y="327.7" textLength="201.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">个目标在分流名单内：加密</text>
+<text x="372.8" y="327.7" textLength="25.2" lengthAdjust="spacing" fill="#d7dae0">DNS</text>
+<text x="406.4" y="327.7" textLength="84.0" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">下也走分流</text>
+<text x="36.8" y="365.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">出口</text>
+<path d="M78.80,361.50L87.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,361.50L95.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M95.60,361.50L104.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M104.00,361.50L112.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,361.50L120.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M120.80,361.50L129.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,361.50L137.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,361.50L146.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M146.00,361.50L154.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,361.50L162.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,361.50L171.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,361.50L179.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M179.60,361.50L188.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M188.00,361.50L196.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M196.40,361.50L204.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,361.50L213.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M213.20,361.50L221.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M221.60,361.50L230.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,361.50L238.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M238.40,361.50L246.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,361.50L255.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,361.50L263.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,361.50L272.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M272.00,361.50L280.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M280.40,361.50L288.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M288.80,361.50L297.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M297.20,361.50L305.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M305.60,361.50L314.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M314.00,361.50L322.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M322.40,361.50L330.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M330.80,361.50L339.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M339.20,361.50L347.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M347.60,361.50L356.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M356.00,361.50L364.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M364.40,361.50L372.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M372.80,361.50L381.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M381.20,361.50L389.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M389.60,361.50L398.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M398.00,361.50L406.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M406.40,361.50L414.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M414.80,361.50L423.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M423.20,361.50L431.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M431.60,361.50L440.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M440.00,361.50L448.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M448.40,361.50L456.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M456.80,361.50L465.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M465.20,361.50L473.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M473.60,361.50L482.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M482.00,361.50L490.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M490.40,361.50L498.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M498.80,361.50L507.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M507.20,361.50L515.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M515.60,361.50L524.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M524.00,361.50L532.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M532.40,361.50L540.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M540.80,361.50L549.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M549.20,361.50L557.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M557.60,361.50L566.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M566.00,361.50L574.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M574.40,361.50L582.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M582.80,361.50L591.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M591.20,361.50L599.60,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M599.60,361.50L608.00,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M608.00,361.50L616.40,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M616.40,361.50L624.80,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M624.80,361.50L633.20,361.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="641.6" y="365.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">3</text>
+<text x="658.4" y="365.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">个</text>
+<rect x="36.8" y="372.5" width="25.2" height="16" rx="3" fill="#5fd787"/>
+<text x="45.2" y="384.7" textLength="8.4" lengthAdjust="spacing" fill="#000000" font-weight="700">A</text>
+<text x="70.4" y="384.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">默认</text>
+<text x="120.8" y="384.7" textLength="100.8" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">203.0.113.63</text>
+<text x="263.6" y="384.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">AS64500</text>
+<text x="330.8" y="384.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">Example</text>
+<text x="398.0" y="384.7" textLength="75.6" lengthAdjust="spacing" fill="#d7dae0">Broadband</text>
+<text x="120.8" y="403.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">TW</text>
+<text x="146.0" y="403.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">Taipei</text>
+<circle cx="209.00" cy="400.00" r="1.05" fill="#8a8a8a"/>
+<text x="221.6" y="403.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">回显</text>
+<text x="263.6" y="403.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">312</text>
+<text x="297.2" y="403.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">次</text>
+<circle cx="326.60" cy="400.00" r="1.05" fill="#8a8a8a"/>
+<text x="339.2" y="403.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">线路</text>
+<text x="381.2" y="403.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a">10.0.1.1</text>
+<path d="M459.40,397.40L462.80,400.00L459.40,402.60" stroke-width="1.2" fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="473.6" y="403.7" textLength="92.4" lengthAdjust="spacing" fill="#8a8a8a">203.0.113.1</text>
+<rect x="36.8" y="410.5" width="25.2" height="16" rx="3" fill="#ffaf5f"/>
+<text x="45.2" y="422.7" textLength="8.4" lengthAdjust="spacing" fill="#000000" font-weight="700">B</text>
+<text x="120.8" y="422.7" textLength="117.6" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">198.51.100.125</text>
+<text x="263.6" y="422.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">AS64501</text>
+<text x="330.8" y="422.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">Example</text>
+<text x="398.0" y="422.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">Transit</text>
+<text x="473.6" y="422.7" textLength="100.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">非默认运营商</text>
+<text x="120.8" y="441.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">TW</text>
+<text x="146.0" y="441.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">Taipei</text>
+<circle cx="209.00" cy="438.00" r="1.05" fill="#8a8a8a"/>
+<text x="221.6" y="441.7" textLength="84.0" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">标记为机房</text>
+<circle cx="318.20" cy="438.00" r="1.05" fill="#8a8a8a"/>
+<text x="330.8" y="441.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">回显</text>
+<text x="372.8" y="441.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">35</text>
+<text x="398.0" y="441.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">次</text>
+<circle cx="427.40" cy="438.00" r="1.05" fill="#8a8a8a"/>
+<text x="440.0" y="441.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">线路</text>
+<text x="482.0" y="441.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a">10.0.2.1</text>
+<path d="M560.20,435.40L563.60,438.00L560.20,440.60" stroke-width="1.2" fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="574.4" y="441.7" textLength="84.0" lengthAdjust="spacing" fill="#8a8a8a">172.18.0.1</text>
+<rect x="36.8" y="448.5" width="25.2" height="16" rx="3" fill="#d787ff"/>
+<text x="45.2" y="460.7" textLength="8.4" lengthAdjust="spacing" fill="#000000" font-weight="700">C</text>
+<text x="120.8" y="460.7" textLength="84.0" lengthAdjust="spacing" fill="#d7dae0" font-weight="700">192.0.2.36</text>
+<text x="263.6" y="460.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">AS64500</text>
+<text x="330.8" y="460.7" textLength="58.8" lengthAdjust="spacing" fill="#d7dae0">Example</text>
+<text x="398.0" y="460.7" textLength="75.6" lengthAdjust="spacing" fill="#d7dae0">Broadband</text>
+<text x="120.8" y="479.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">TW</text>
+<text x="146.0" y="479.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">Taipei</text>
+<circle cx="209.00" cy="476.00" r="1.05" fill="#8a8a8a"/>
+<text x="221.6" y="479.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">回显</text>
+<text x="263.6" y="479.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">12</text>
+<text x="288.8" y="479.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">次</text>
+<circle cx="318.20" cy="476.00" r="1.05" fill="#8a8a8a"/>
+<text x="330.8" y="479.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">线路</text>
+<text x="372.8" y="479.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a">10.0.2.1</text>
+<path d="M451.00,473.40L454.40,476.00L451.00,478.60" stroke-width="1.2" fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="465.2" y="479.7" textLength="75.6" lengthAdjust="spacing" fill="#8a8a8a">10.42.0.1</text>
+<text x="36.8" y="517.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4" font-weight="700">分类</text>
+<path d="M78.80,513.50L87.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M87.20,513.50L95.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M95.60,513.50L104.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M104.00,513.50L112.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M112.40,513.50L120.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M120.80,513.50L129.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M129.20,513.50L137.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M137.60,513.50L146.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M146.00,513.50L154.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M154.40,513.50L162.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M162.80,513.50L171.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M171.20,513.50L179.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M179.60,513.50L188.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M188.00,513.50L196.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M196.40,513.50L204.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M204.80,513.50L213.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M213.20,513.50L221.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M221.60,513.50L230.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M230.00,513.50L238.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M238.40,513.50L246.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M246.80,513.50L255.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M255.20,513.50L263.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M263.60,513.50L272.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M272.00,513.50L280.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M280.40,513.50L288.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M288.80,513.50L297.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M297.20,513.50L305.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M305.60,513.50L314.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M314.00,513.50L322.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M322.40,513.50L330.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M330.80,513.50L339.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M339.20,513.50L347.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M347.60,513.50L356.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M356.00,513.50L364.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M364.40,513.50L372.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M372.80,513.50L381.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M381.20,513.50L389.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M389.60,513.50L398.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M398.00,513.50L406.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M406.40,513.50L414.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M414.80,513.50L423.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M423.20,513.50L431.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M431.60,513.50L440.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M440.00,513.50L448.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M448.40,513.50L456.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M456.80,513.50L465.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M465.20,513.50L473.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M473.60,513.50L482.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M482.00,513.50L490.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M490.40,513.50L498.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M498.80,513.50L507.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M507.20,513.50L515.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M515.60,513.50L524.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M524.00,513.50L532.40,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M532.40,513.50L540.80,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M540.80,513.50L549.20,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M549.20,513.50L557.60,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<path d="M557.60,513.50L566.00,513.50" fill="none" stroke="#585858" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
+<text x="574.4" y="517.7" textLength="100.8" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">每格一个目标</text>
+<text x="179.6" y="536.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">系统</text>
+<text x="221.6" y="536.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">DNS</text>
+<text x="356.0" y="536.7" textLength="33.6" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">加密</text>
+<text x="398.0" y="536.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">DNS</text>
+<text x="36.8" y="555.7" textLength="16.8" lengthAdjust="spacing" fill="#d7dae0">AI</text>
+<text x="137.6" y="555.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">15</text>
+<rect x="180.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="273.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="281.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="289.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="298.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="357.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="449.40" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="457.80" y="548.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="466.20" y="548.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="474.60" y="548.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<text x="36.8" y="574.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0">Meta</text>
+<text x="137.6" y="574.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">10</text>
+<rect x="180.60" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="189.00" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="197.40" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="205.80" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="214.20" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="222.60" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="231.00" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="239.40" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="247.80" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="256.20" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="357.00" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="567.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="567.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<text x="36.8" y="593.7" textLength="67.2" lengthAdjust="spacing" fill="#d7dae0">Telegram</text>
+<text x="146.0" y="593.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">8</text>
+<rect x="180.60" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="189.00" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="197.40" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="205.80" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="214.20" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="222.60" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="231.00" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="239.40" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="357.00" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="365.40" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="373.80" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="382.20" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="390.60" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="399.00" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="407.40" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="415.80" y="586.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<text x="36.8" y="612.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">社媒</text>
+<text x="137.6" y="612.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">13</text>
+<rect x="180.60" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="273.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="281.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="449.40" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="457.80" y="605.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="631.7" textLength="50.4" lengthAdjust="spacing" fill="#d7dae0">Google</text>
+<text x="146.0" y="631.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">5</text>
+<rect x="180.60" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="624.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="214.20" y="624.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="357.00" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="624.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="624.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<rect x="390.60" y="624.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<text x="36.8" y="650.7" textLength="50.4" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">流媒体</text>
+<text x="137.6" y="650.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">11</text>
+<rect x="180.60" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="643.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="669.7" textLength="67.2" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">金融支付</text>
+<text x="137.6" y="669.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">11</text>
+<rect x="180.60" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="662.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="688.7" textLength="50.4" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">虚拟币</text>
+<text x="137.6" y="688.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">15</text>
+<rect x="180.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="273.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="281.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="289.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="298.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="449.40" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="457.80" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="466.20" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="474.60" y="681.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="707.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">银行</text>
+<text x="137.6" y="707.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">10</text>
+<rect x="180.60" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="189.00" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="197.40" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="205.80" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="214.20" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="222.60" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="231.00" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="239.40" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="247.80" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="256.20" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="357.00" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="700.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="415.80" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="424.20" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<rect x="432.60" y="700.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<text x="36.8" y="726.7" textLength="67.2" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">电商购物</text>
+<text x="137.6" y="726.7" textLength="16.8" lengthAdjust="spacing" fill="#8a8a8a">17</text>
+<rect x="180.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="256.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="264.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="273.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="281.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="289.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="298.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="306.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="315.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="432.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="441.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="449.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="457.80" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="466.20" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="474.60" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="483.00" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="491.40" y="719.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="745.7" textLength="50.4" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">开发者</text>
+<text x="146.0" y="745.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">9</text>
+<rect x="180.60" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="738.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="764.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">游戏</text>
+<text x="146.0" y="764.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">9</text>
+<rect x="180.60" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="757.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="36.8" y="783.7" textLength="67.2" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">本地服务</text>
+<text x="146.0" y="783.7" textLength="8.4" lengthAdjust="spacing" fill="#8a8a8a">9</text>
+<rect x="180.60" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="189.00" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="197.40" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="205.80" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="214.20" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="222.60" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="231.00" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="239.40" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="247.80" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="357.00" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="365.40" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="373.80" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="382.20" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="390.60" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="399.00" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="407.40" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="415.80" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="424.20" y="776.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<rect x="180.60" y="795.80" width="6.4" height="6.4" rx="1" fill="#5fd787"/>
+<text x="196.4" y="802.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">A</text>
+<text x="213.2" y="802.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">默认</text>
+<rect x="273.00" y="795.80" width="6.4" height="6.4" rx="1" fill="#ffaf5f"/>
+<text x="288.8" y="802.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">B</text>
+<rect x="323.40" y="795.80" width="6.4" height="6.4" rx="1" fill="#d787ff"/>
+<text x="339.2" y="802.7" textLength="8.4" lengthAdjust="spacing" fill="#d7dae0">C</text>
 </svg>
