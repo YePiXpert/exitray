@@ -31,6 +31,8 @@ ExitRay 把请求钉到目标的 IP 上，让目标自己报出它看到的访�
 bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh)
 ```
 
+2.3.0 以前叫 splitcheck，旧的一键命令还能用，会转去运行新脚本。
+
 常用参数直接加在命令后面：
 
 | 想做什么 | 加上 |

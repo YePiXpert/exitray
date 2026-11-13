@@ -17,6 +17,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'exitray.sh'
+OLD_SCRIPT = ROOT / 'splitcheck.sh'  # 改名前的文件名，现在只转去运行 exitray.sh
 STUBS = ROOT / 'tests' / 'stubs'
 BASH = os.environ.get('TEST_BASH', shutil.which('bash') or 'bash')
 TEST_AWK = os.environ.get('TEST_AWK', '')
@@ -203,6 +204,54 @@ class ArgsTests(unittest.TestCase):
     def test_common_catalog_has_no_duplicates(self):
         common = shell("catalog | awk '$1 !~ /^@/ { print $2 }' | sort | uniq -d").stdout
         self.assertEqual(common, '')
+
+
+class OldNameTests(unittest.TestCase):
+    """改名前的 splitcheck.sh 还留在仓库里：它转去运行 exitray.sh，参数和退出码原样传下去。"""
+
+    def run_old(self, script, *args, **env):
+        return subprocess.run([BASH, posix(script), *args], text=True, encoding='utf-8',
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env={**os.environ, 'EXITRAY_NO_INSTALL': '1', **env},
+                              stdin=subprocess.DEVNULL, timeout=30)
+
+    def alone(self, curl):
+        """只有 splitcheck.sh 自己的目录：旧的一键命令经 bash <(curl …) 运行时，旁边就没有 exitray.sh。curl 是假的。"""
+        root = Path(tempfile.mkdtemp(prefix='exitray-old-'))
+        self.addCleanup(shutil.rmtree, root, True)
+        shutil.copy(OLD_SCRIPT, root / 'splitcheck.sh')
+        (root / 'bin').mkdir()
+        write(root / 'bin' / 'curl', '#!/bin/sh\n' + curl)
+        (root / 'bin' / 'curl').chmod(0o755)
+        env = {'PATH': f'{root / "bin"}{os.pathsep}{os.environ["PATH"]}', 'CURL_LOG': posix(root / 'curl.log')}
+        return root, env
+
+    def test_runs_the_script_next_to_it(self):
+        new = self.run_old(SCRIPT, '-V')
+        old = self.run_old(OLD_SCRIPT, '-V')
+        self.assertEqual((old.returncode, old.stdout), (0, new.stdout))
+        self.assertTrue(new.stdout.startswith('exitray '), new.stdout)
+        # 提示改名的那一行写到 stderr，不混进 -j、-m 这些要重定向的输出
+        self.assertIn('ExitRay', old.stderr)
+        self.assertIn('exitray/main/exitray.sh', old.stderr)
+        bad = self.run_old(OLD_SCRIPT, '-c', 'nope')
+        self.assertEqual(bad.returncode, 1)
+        self.assertIn('exitray: ', bad.stderr)
+
+    def test_downloads_the_new_script_when_alone(self):
+        root, env = self.alone('echo "$*" > "$CURL_LOG"\necho \'echo "ran:$*"; exit 7\'\n')
+        result = self.run_old(root / 'splitcheck.sh', '-c', 'ai', '-y', **env)
+        self.assertEqual((result.returncode, result.stdout), (7, 'ran:-c ai -y\n'), result.stderr)
+        self.assertEqual((root / 'curl.log').read_text().strip(),
+                         '-fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh')
+
+    def test_failed_download_is_an_error(self):
+        # 下载失败，或者下载到的是空的：报错退出，不能什么都不说就结束
+        for curl in ('exit 22\n', 'exit 0\n'):
+            root, env = self.alone(curl)
+            result = self.run_old(root / 'splitcheck.sh', '-y', **env)
+            self.assertEqual((result.returncode, result.stdout), (1, ''), curl)
+            self.assertIn('下载不了', result.stderr, curl)
 
 
 class TraceParserTests(unittest.TestCase):

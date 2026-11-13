@@ -21,6 +21,8 @@
 curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 ```
 
+2.3.0 以前叫 splitcheck。旧的一键命令和 `splitcheck.sh` 还能用：它只是转去运行 `exitray.sh`，旁边没有就先下载。
+
 ## 能看出什么
 
 | 线路上发生了什么 | 报告里叫 | 依据 |
@@ -484,3 +486,5 @@ python3 tests/test_regression.py AnalyzeTests
   ```bash
   python3 docs/tools/build.py
   ```
+
+仓库根目录的 `splitcheck.sh` 是改名前的文件名，只做一件事：转去运行 `exitray.sh`，让旧的一键命令继续可用。功能都写在 `exitray.sh` 里。
