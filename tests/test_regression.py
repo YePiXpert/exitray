@@ -1820,8 +1820,10 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         target = json.loads(result.stdout)['targets'][0]
         self.assertEqual(target['reach'], 'ok')
-        self.assertEqual([(i['ip'], i['state']) for i in target['ips']], [('2.2.2.2', 'ok')])
+        # 取回显时证书校验不过，不能当成“连上了却没响应”：那样每一轮都不翻页面，还要白白复测两次
+        self.assertEqual([(i['ip'], i['state'], i['attempts']) for i in target['ips']], [('2.2.2.2', 'ok', 2)])
         pages = [r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']
+        self.assertEqual(len(pages), 2)
         self.assertEqual({r['insecure'] for r in pages}, {'1'})
 
     def test_handshake_failure_is_told_apart_from_unreachable(self):

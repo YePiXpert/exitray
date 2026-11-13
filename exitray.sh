@@ -1125,15 +1125,18 @@ fingerprint() {
 #         可能不一样，借别的域名问不出这一条
 # 经代理时看到的是到代理的连接，说明不了目标连不连得上，不记
 echo_443() {
-  local sni=$1 t cur=''
+  local sni=$1 t cur='' rc
   shift
   : > "$ECHO_TMP"
   t=$("$@" -o "$ECHO_TMP" -w '%{time_connect} %{http_code}')
+  rc=$?
   [[ -z $PROXY && -n ${NOCONN:-} ]] || return 0
   if [[ ! ${t% *} =~ [1-9] ]]; then
     echo dead > "$NOCONN"
   elif [[ $sni == "$name" ]]; then
-    if [[ ${t#* } == 000 ]]; then echo tls > "$NOCONN"; else : > "$NOCONN"; fi
+    # 证书校验不过（curl 退出码 60，旧版本有时是 51）不算：对方已经在 TLS 握手里给出了证书，只是不被信任。
+    # 翻页面时不校验证书，是连得上的，自签 CA、证书链不全的站点都是这样
+    if [[ ${t#* } == 000 && $rc != 51 && $rc != 60 ]]; then echo tls > "$NOCONN"; else : > "$NOCONN"; fi
   else
     # 借别的域名连上了：之前记的“TCP 没连上”不算数了；“握手不成”说的是目标自己的域名，留着
     [[ ! -s $NOCONN ]] || IFS= read -r cur < "$NOCONN" || true
