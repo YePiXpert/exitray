@@ -1770,6 +1770,23 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(len(self.requests('http://2.2.2.2:443/')), 2)
         self.assertEqual(len(self.requests('http://4.4.4.4:443/')), 2)
 
+    def test_known_cdn_ip_that_cannot_be_reached_on_443_is_not_asked_for_its_page(self):
+        # 80 端口认得出是哪家 CDN，443 端口却连不上：取回显时已经连过 443，不用再翻页面等一遍超时。
+        # 借别的域名取回显时没连上也算数，TCP 连不连得上和域名无关
+        self.state_file('doh', 'a.example 2.2.2.2\n')
+        self.state_file('sysdns', 'a.example 4.4.4.4\n')
+        self.state_file('dead443', '2.2.2.2\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = self.run_script(*self.common(self.targets('ai a.example\n')), '-j', '--exit-code')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data['verdict'], 'blocked')
+        ips = {i['ip']: (i['state'], i['connected'], i['attempts']) for i in data['targets'][0]['ips']}
+        self.assertEqual(ips['2.2.2.2'], ('dead', 0, 3))
+        self.assertTrue(self.requests('http://2.2.2.2/'))
+        self.assertTrue([r for r in self.requests('https://www.cloudflare.com/cdn-cgi/trace') if r['pin'] == '2.2.2.2'])
+        self.assertEqual([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2'], [])
+
     def test_one_off_timeout_is_retested_and_not_a_block(self):
         # 头两个请求（认 CDN、取回显）都超时，复测时恢复
         self.state_file('doh', 'a.example 2.2.2.2\n')

@@ -1118,10 +1118,33 @@ fingerprint() {
   printf '%s' "$kind"
 }
 
-# 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN（一个文件名）时顺带记一件事：这一次连目标的
-# 443 端口有没有白等一场。TCP 没连上写 dead，连上了却没等到任何响应写 tls，其余情况文件是空的
+# 向这个 IP 的 443 端口发一次取回显的请求，响应体写进 $ECHO_TMP。$1 是这次请求用的域名，其余是要执行
+# 的命令。调用方设了 NOCONN（一个文件名）时，记下这一次是不是白等了一场：
+#   dead  TCP 没连上。连不连得上和域名无关，借别的域名问出来的也算数
+#   tls   TCP 连上了，却没等到任何 HTTP 响应。只在用的是目标自己的域名时记：换一个 SNI，被拦的情况
+#         可能不一样，借别的域名问不出这一条
+# 经代理时看到的是到代理的连接，说明不了目标连不连得上，不记
+echo_443() {
+  local sni=$1 t cur=''
+  shift
+  : > "$ECHO_TMP"
+  t=$("$@" -o "$ECHO_TMP" -w '%{time_connect} %{http_code}')
+  [[ -z $PROXY && -n ${NOCONN:-} ]] || return 0
+  if [[ ! ${t% *} =~ [1-9] ]]; then
+    echo dead > "$NOCONN"
+  elif [[ $sni == "$name" ]]; then
+    if [[ ${t#* } == 000 ]]; then echo tls > "$NOCONN"; else : > "$NOCONN"; fi
+  else
+    # 借别的域名连上了：之前记的“TCP 没连上”不算数了；“握手不成”说的是目标自己的域名，留着
+    [[ ! -s $NOCONN ]] || IFS= read -r cur < "$NOCONN" || true
+    [[ $cur != dead ]] || : > "$NOCONN"
+  fi
+}
+
+# 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN 时，取回显的过程里连它的 443 端口白等了没有，
+# 记在那个文件里（见 echo_443），没有白等文件是空的
 echo_by_ip() {
-  local name=$1 ip=$2 kind ex='' m='' tmp t
+  local name=$1 ip=$2 kind ex='' m='' ECHO_TMP="$WORK/e.$BASHPID"
   [[ -z ${NOCONN:-} ]] || : > "$NOCONN"
   # 经代理时用主机名，让节点按自己的 DNS 配置解析
   if [[ -n $PROXY ]]; then
@@ -1143,39 +1166,37 @@ echo_by_ip() {
         (( HOST_SNIFF )) || ex=$(HTTP_TIMEOUT=6 http -H 'Host: www.fastly-debug.com' "http://$ip/" | extract fastly)
         m=fastly ;;
       cloudfront)
-        ex=$(pinned www.expressvpn.com "$ip" https://www.expressvpn.com/what-is-my-ip | extract cloudfront)
+        echo_443 www.expressvpn.com pinned www.expressvpn.com "$ip" https://www.expressvpn.com/what-is-my-ip
+        ex=$(extract cloudfront < "$ECHO_TMP")
         m=cloudfront ;;
       cloudflare)
-        is_ipv4 "$name" || ex=$(fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" | extract trace)
-        [[ -n $ex ]] || ex=$(pinned www.cloudflare.com "$ip" https://www.cloudflare.com/cdn-cgi/trace | extract trace)
+        if ! is_ipv4 "$name"; then
+          echo_443 "$name" fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace"
+          ex=$(extract trace < "$ECHO_TMP")
+        fi
+        if [[ -z $ex ]]; then
+          echo_443 www.cloudflare.com pinned www.cloudflare.com "$ip" https://www.cloudflare.com/cdn-cgi/trace
+          ex=$(extract trace < "$ECHO_TMP")
+        fi
         m=cloudflare ;;
       google)
-        ex=$(pinned www.youtube.com "$ip" https://www.youtube.com/embed/ | extract youtube)
+        echo_443 www.youtube.com pinned www.youtube.com "$ip" https://www.youtube.com/embed/
+        ex=$(extract youtube < "$ECHO_TMP")
         m=google ;;
       meta)
-        ex=$(pinned www.facebook.com "$ip" https://www.facebook.com/diagnostics | extract meta)
+        echo_443 www.facebook.com pinned www.facebook.com "$ip" https://www.facebook.com/diagnostics
+        ex=$(extract meta < "$ECHO_TMP")
         m=meta ;;
       *)
         # 80 端口不通或经 HTTP 代理时认不出 CDN，再试一次 Cloudflare 的回显路径
         if ! is_ipv4 "$name"; then
-          tmp="$WORK/e.$BASHPID"
-          : > "$tmp"
-          t=$(HTTP_TIMEOUT=5 fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" -o "$tmp" -w '%{time_connect} %{http_code}')
-          ex=$(extract trace < "$tmp")
-          rm -f "$tmp"
-          # 连 TCP 都没连上记 dead，连上了却没等到任何 HTTP 响应记 tls。经代理时看到的是到代理的连接，
-          # 说明不了目标连不连得上，不记
-          if [[ -z $PROXY && -n ${NOCONN:-} ]]; then
-            if [[ ! ${t% *} =~ [1-9] ]]; then
-              echo dead > "$NOCONN"
-            elif [[ ${t#* } == 000 ]]; then
-              echo tls > "$NOCONN"
-            fi
-          fi
+          HTTP_TIMEOUT=5 echo_443 "$name" fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace"
+          ex=$(extract trace < "$ECHO_TMP")
         fi
         m=cloudflare ;;
     esac
   fi
+  [[ ! -e $ECHO_TMP ]] || rm -f "$ECHO_TMP"
   [[ -n $ex ]] && printf '%s %s' "$ex" "$m"
   return 0
 }

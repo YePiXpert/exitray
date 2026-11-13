@@ -10,6 +10,7 @@
 #   doh_far      每行“域名 IP”：带外地 ECS 查询时的应答，触发测试用
 #   silent       这些 IP 不回显，也认不出是哪家 CDN
 #   dead         这些 IP 连不上
+#   dead443      这些 IP 只有 443 端口连不上，80 端口照常应答
 #   flaky        每行“IP N”：这个 IP 前 N 个请求连不上，之后恢复，模拟偶发的超时
 #   badcert      这些 IP 的证书不被信任：不带 -k 的 HTTPS 请求握手失败，带 -k 的正常
 #   tlsfail      这些 IP 的 TCP 连得上，TLS 握手却总是不成
@@ -110,6 +111,7 @@ target=$pin
 unreachable() {
   [[ -n $target ]] || return 1
   listed dead "$target" && return 0
+  [[ $url == https://* || $url == http://*:443/* ]] && listed dead443 "$target" && return 0
   local n
   n=$(lookup flaky "$target")
   [[ -n $n ]] || return 1
