@@ -1118,8 +1118,8 @@ fingerprint() {
   printf '%s' "$kind"
 }
 
-# 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN（一个文件名）时顺带记一件事：
-# 这一次连目标的 443 端口，是不是连 TCP 都没连上。没连上文件里有内容，否则是空的
+# 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN（一个文件名）时顺带记一件事：这一次连目标的
+# 443 端口有没有白等一场。TCP 没连上写 dead，连上了却没等到任何响应写 tls，其余情况文件是空的
 echo_by_ip() {
   local name=$1 ip=$2 kind ex='' m='' tmp t
   [[ -z ${NOCONN:-} ]] || : > "$NOCONN"
@@ -1160,11 +1160,18 @@ echo_by_ip() {
         if ! is_ipv4 "$name"; then
           tmp="$WORK/e.$BASHPID"
           : > "$tmp"
-          t=$(HTTP_TIMEOUT=5 fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" -o "$tmp" -w '%{time_connect}')
+          t=$(HTTP_TIMEOUT=5 fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" -o "$tmp" -w '%{time_connect} %{http_code}')
           ex=$(extract trace < "$tmp")
           rm -f "$tmp"
-          # 经代理时看到的是到代理的连接，说明不了目标连不连得上
-          [[ $t =~ [1-9] || -n $PROXY || -z ${NOCONN:-} ]] || echo dead > "$NOCONN"
+          # 连 TCP 都没连上记 dead，连上了却没等到任何 HTTP 响应记 tls。经代理时看到的是到代理的连接，
+          # 说明不了目标连不连得上，不记
+          if [[ -z $PROXY && -n ${NOCONN:-} ]]; then
+            if [[ ! ${t% *} =~ [1-9] ]]; then
+              echo dead > "$NOCONN"
+            elif [[ ${t#* } == 000 ]]; then
+              echo tls > "$NOCONN"
+            fi
+          fi
         fi
         m=cloudflare ;;
     esac
@@ -1367,7 +1374,7 @@ page_fetch() {
 # ok 收到了响应，tcp 只验证过 TCP 连得上，tls 是 TCP 连上了但握手不成，dead 是 TCP 连不上，- 没试过。
 # 换出口的复测也用它，轮次写成 r1、r2
 probe_ip() {
-  local pass=$1 group=$2 name=$3 round=$4 ip=$5 path out ex='-' method='-' code='-' cands='-' reach='-'
+  local pass=$1 group=$2 name=$3 round=$4 ip=$5 path out ex='-' method='-' code='-' cands='-' reach='-' mark=''
   local NOCONN="$WORK/n.$BASHPID"
   # 加密 DNS 这一轮没有明文查询，路由和回显谁先谁后都一样，同时做。系统 DNS 那一轮照旧先探路由：
   # 刚发过明文查询，上游的名单要过一会儿才生效，探路由的这一两秒正好让出来，回显才看得到生效后的出口
@@ -1377,15 +1384,16 @@ probe_ip() {
     path=$(route_of "$ip" "$pass$round")
   fi
   out=$(echo_by_ip "$name" "$ip")
+  # 取回显时连它的 443 端口白等了一场的话，这里有 dead（TCP 没连上）或 tls（连上了却没有任何响应）
+  [[ ! -s $NOCONN ]] || IFS= read -r mark < "$NOCONN" || true
   if [[ -n $out ]]; then
     ex=${out% *}
     method=${out#* }
     reach=ok
   elif ! is_ipv4 "$name" && { [[ $round == 1 || $round == r* ]] || grep -qxF "$name" "$WORK/page_names" 2>/dev/null; }; then
-    if [[ -s $NOCONN ]]; then
-      # 刚才取回显时连它的 443 端口，TCP 就没连上，页面也翻不了，不用再等一遍超时。
-      # 记成连不上，算不算数由复测决定
-      code=000 reach=dead
+    if [[ -n $mark ]]; then
+      # 再翻页面也是同一个结果，不用再等一遍超时。照翻过页面一样记下来，算不算数由复测决定
+      code=000 reach=$mark
     else
       # 没有回显就翻页面。后面几轮只翻第一轮证明有用的目标，省流量；复测要看连不连得上，也翻
       page_fetch "$pass" "$name" "$ip"
@@ -1393,7 +1401,11 @@ probe_ip() {
     fi
   elif [[ -z $PROXY ]]; then
     # IP 目标没有页面可翻；后面几轮不翻页面的域名也照样连一次。没试过的 IP 不能当成连得上
-    if [[ ! -s $NOCONN ]] && tcp_open "$ip" 443; then reach=tcp; else reach=dead; fi
+    case $mark in
+      dead) reach=dead ;;
+      tls) reach=tcp ;;
+      *) if tcp_open "$ip" 443; then reach=tcp; else reach=dead; fi ;;
+    esac
   fi
   if [[ $pass == E ]]; then
     route_wait
@@ -1436,7 +1448,8 @@ run_pass() {
 # 测不了的记下卡在哪一步：nofar 拿不到外地节点的 IP，noecho 那个 IP 不回显，
 # mismatch 明文应答里没有那个 IP（53 端口被劫持时，应答是劫持方按自己的位置给的）
 trigger_one() {
-  local group=$1 name=$2 sub ip out before after m answers why=nofar silent=' '
+  local group=$1 name=$2 sub ip out before after m answers why=nofar silent=' ' stuck=0
+  local NOCONN="$WORK/n.$BASHPID"
   for sub in $FAR_SUBNETS; do
     ip=$(doh "$name" "$sub" | head -1)
     [[ -n $ip ]] || continue
@@ -1446,6 +1459,8 @@ trigger_one() {
     if [[ -z $out ]]; then
       [[ $why == mismatch ]] || why=noecho
       silent+="$ip "
+      # 外地节点的 IP 接连两个都是等到超时也连不上：多半整段都被拦了，剩下的子网不再一个个等
+      [[ ! -s $NOCONN ]] || (( ++stuck < 2 )) || break
       continue
     fi
     before=${out% *}
@@ -1542,18 +1557,21 @@ retest_one() {
 # 触发测试里的偶发读数按没变处理，免得出口已经不算数了，报告里还写着“触发”
 settle_triggers() {
   [[ -s $WORK/trigger.tsv ]] || return 0
-  touch "$WORK/unstable.tsv" "$WORK/pool.tsv"
-  [[ -s $WORK/unstable.tsv || -s $WORK/pool.tsv ]] || return 0
-  # 出口池里的出口算同一个：前后只是在池里换了一个 IP，不是触发
-  awk -F'\t' -v OFS='\t' -v F_BAD="$WORK/unstable.tsv" -v F_POOL="$WORK/pool.tsv" '
+  touch "$WORK/unstable.tsv" "$WORK/pool.tsv" "$WORK/xpool.tsv"
+  [[ -s $WORK/unstable.tsv || -s $WORK/pool.tsv || -s $WORK/xpool.tsv ]] || return 0
+  # 出口池里的出口算同一个：前后只是在池里换了一个 IP，不是触发。非默认出口的地址池也一样
+  awk -F'\t' -v OFS='\t' -v F_BAD="$WORK/unstable.tsv" -v F_POOL="$WORK/pool.tsv" -v F_XPOOL="$WORK/xpool.tsv" '
     FILENAME == F_POOL { member[$1] = 1; if ($4 == 1) canon = $1; next }
+    FILENAME == F_XPOOL { alias[$2] = $1; next }
     FILENAME == F_BAD { bad[$1] = 1; next }
     {
       if ($4 in member) $4 = canon
       if ($5 in member) $5 = canon
+      if ($4 in alias) $4 = alias[$4]
+      if ($5 in alias) $5 = alias[$5]
       if ($4 in bad) $4 = $5; else if ($5 in bad) $5 = $4
       print
-    }' "$WORK/pool.tsv" "$WORK/unstable.tsv" "$WORK/trigger.tsv" > "$WORK/trigger.new" &&
+    }' "$WORK/pool.tsv" "$WORK/xpool.tsv" "$WORK/unstable.tsv" "$WORK/trigger.tsv" > "$WORK/trigger.new" &&
     mv "$WORK/trigger.new" "$WORK/trigger.tsv"
 }
 
@@ -1988,10 +2006,11 @@ function ipstate(k3, f) {
 }
 
 # 这个目标各个 IP 连不连得上：ok 都连得上，partial 有的连不上，dead 全连不上，- 没试过。
-# 同时把逐 IP 的结果拼成“IP=出口:状态:连上次数/尝试次数:改道”写进 IP_MAP，
-# 改道写成“位置@那一跳”，没有是 0。R_* 是连不上且改道、连得上但改道、握手不成、不稳定的 IP 数
-function reach(key, j, ip, k3, nd, nl, r, s, dv) {
-  nd = 0; nl = 0; s = ""; R_DD = 0; R_DL = 0; R_TLS = 0; R_FLAKY = 0
+# 同时把逐 IP 的结果拼成“IP=出口:状态:连上次数/尝试次数:改道:线路”写进 IP_MAP，
+# 改道写成“位置@那一跳”，没有是 0；线路是连不上的 IP 的路由指向的非默认出口，没有是 -。
+# R_* 是连不上且改道、连得上但改道、握手不成、不稳定、连不上且路由走非默认出口线路的 IP 数
+function reach(key, j, ip, k3, nd, nl, r, s, dv, ln) {
+  nd = 0; nl = 0; s = ""; R_DD = 0; R_DL = 0; R_TLS = 0; R_FLAKY = 0; R_SD = 0
   for (j = 1; j <= NIP[key] + 0; j++) {
     ip = IPO[key, j]; k3 = key SUBSEP ip
     r = ipstate(k3)
@@ -2004,9 +2023,13 @@ function reach(key, j, ip, k3, nd, nl, r, s, dv) {
       dv = IPDV[k3] "@" IPDH[k3]
       if (r == "dead") R_DD++; else R_DL++
     }
-    s = s (s == "" ? "" : " ") ip "=" (LETS[k3] == "" ? "?" : LETS[k3]) ":" r ":" (NOK[k3] + 0) "/" (NTRY[k3] + 0) ":" dv
+    ln = "-"
+    if (r == "dead" && !(k3 in IPDV) && (k3 in IPLN) && IPLN[k3] != "*" && IPLN[k3] != DEF) { ln = LETTER[IPLN[k3]]; R_SD++ }
+    s = s (s == "" ? "" : " ") ip "=" (LETS[k3] == "" ? "?" : LETS[k3]) ":" r ":" (NOK[k3] + 0) "/" (NTRY[k3] + 0) ":" dv ":" ln
   }
   IP_MAP = (s == "" ? "-" : s)
+  # 连不上的 IP 里只有一部分的路由指向别的出口，其余的走默认线路：这个目标不能整个算到那条线路头上
+  if (R_SD + R_DD < nd) R_SD = 0
   if (nd > 0) return nl > 0 ? "partial" : "dead"
   return nl > 0 ? "ok" : "-"
 }
@@ -2078,6 +2101,26 @@ END {
     v = NEUTRAL[e] + 0
     if (v > best || (v == best && e == BASE)) { best = v; DEF = e }
   }
+
+  # 非默认出口里同一个 /24 的几个 IP 合成一个出口。CGNAT、WARP 这类出口是一个地址池，每条连接都可能
+  # 换一个 IP；不合并的话一个出口会被数成好几个，每个又都只回显过一两次，像是偶发的读数。
+  # 和默认出口同网段的不在这里并：那要靠连问几次中立回显来判断（上面的出口池）
+  dnet = net24(DEF)
+  for (e in SEENX) {
+    g = net24(e)
+    if (e == DEF || g == dnet) continue
+    GN[g]++
+    if (!(g in GTOP) || SEENX[e] > SEENX[GTOP[g]] || (SEENX[e] == SEENX[GTOP[g]] && e < GTOP[g])) GTOP[g] = e
+  }
+  f = OUT "/xpool.tsv"
+  for (e in SEENX) {
+    g = net24(e)
+    if (!(g in GTOP) || GN[g] < 2) continue
+    print GTOP[g], e, SEENX[e] > f
+    if (e != GTOP[g]) ALIAS[e] = GTOP[g]
+  }
+  for (i = 1; i <= n; i++) if (EX[i] in ALIAS) EX[i] = ALIAS[EX[i]]
+  for (e in ALIAS) { SEENX[ALIAS[e]] += SEENX[e]; delete SEENX[e] }
 
   # 只回显过一次的出口不能直接算数：出口池轮换、临时的线路切换都会留下这样的读数。
   # 轮次以 r 开头的行是复测，是用同一个目标、同一个 IP 再做的探测。复测看到的成了别的出口，
@@ -2184,8 +2227,11 @@ END {
   for (i = 1; i <= n; i++) {
     DV[i] = 0
     if (KD[i] == "T" && EV[i] != "direct") { DV[i] = divert(PT[i]); DH[i] = DIVH }
-    if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock" || MT[i] == "fakeip" || RC[i] == "dead") continue
+    if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock" || MT[i] == "fakeip") continue
     infer(PT[i], DV[i])
+    # 连不上的 IP 不算走了哪个出口，但路由指向哪条已确认的线路要记下来：被分到别的出口之后连不上，
+    # 和目标自己挂了不是一回事
+    if (RC[i] == "dead") { if (KD[i] == "T" && INF_E == "inferred") LNX[i] = INF_X; continue }
     EV[i] = INF_E; CAND[i] = INF_CAND
     if (INF_X != "-") EX[i] = INF_X
   }
@@ -2196,6 +2242,8 @@ END {
     if (KD[i] != "T") continue
     k3 = CT[i] SUBSEP NM[i] SUBSEP IP[i]
     if (DV[i] > 0 && (!(k3 in IPDV) || DV[i] < IPDV[k3])) { IPDV[k3] = DV[i]; IPDH[k3] = DH[i] }
+    # 连不上的 IP，路由指向的线路。几次探测指向的不一样就不说
+    if (i in LNX) { if (!(k3 in IPLN)) IPLN[k3] = LNX[i]; else if (IPLN[k3] != LNX[i]) IPLN[k3] = "*" }
     if (RD[i] ~ /^r/ || IP[i] == "-" || MT[i] == "dnsblock" || MT[i] == "fakeip") continue
     key = CT[i] SUBSEP NM[i]
     if (!(k3 in IPN)) { IPN[k3] = ++NIP[key]; IPO[key, NIP[key]] = IP[i] }
@@ -2273,11 +2321,11 @@ END {
     }
     # 第 19 列单独标按 IP 分流：系统 DNS 那一轮是 fake-ip 时，类别写的是 fakeip，这一条不能丢。
     # 第 20 列是确凿的 DNS 触发，第 21 到 24 列是连不上且改道、连得上但改道、握手不成、不稳定的 IP 数，
-    # 第 25 列是换了 SNI 之后走的出口，没变是 -
+    # 第 25 列是换了 SNI 之后走的出口，没变是 -，第 26 列是连不上、路由又走非默认出口线路的 IP 数
     rc = reach(key)
     # DNS 触发只标在系统 DNS 下确实走了非默认出口的目标上：三轮里只有一轮换过出口的，照旧只在备注里写“另”
     print TC[t2], TN[t2], pl, px, pe, pm, pa, pt, po, el, ex, ee, em, cls, IPC[key] + 0, (key in CODE ? CODE[key] : "-"), rc, IP_MAP, \
-      ((key in BYIP) ? 1 : 0), (((key in FLIP) && px != DEF) ? 1 : 0), R_DD, R_DL, R_TLS, R_FLAKY, ((key in SNIL) ? SNIL[key] : "-") > f
+      ((key in BYIP) ? 1 : 0), (((key in FLIP) && px != DEF) ? 1 : 0), R_DD, R_DL, R_TLS, R_FLAKY, ((key in SNIL) ? SNIL[key] : "-"), R_SD > f
   }
 
   # 每个出口最常见的路径前段，用来显示分叉点
@@ -2314,11 +2362,14 @@ AWK
   : > "$WORK/once.tsv"
   : > "$WORK/unstable.tsv"
   : > "$WORK/pool.tsv"
+  : > "$WORK/xpool.tsv"
   : > "$WORK/sni.tsv"
   local sni_base
   sni_base=$(awk -F'\t' '$1 == "sniff_base" { print $2; exit }' "$WORK/env.tsv" 2>/dev/null)
   awk -v BASE="$BASE_IP" -v SNIBASE="$sni_base" -v OUT="$WORK" -v F_ORDER="$WORK/targets.txt" -f "$WORK/analyze.awk" "$WORK/targets.txt" "$WORK/rows.tsv" ||
     die "分析结果时出错"
+  # 非默认出口的地址池：每行“代表的 IP、池里的 IP、回显次数”。awk 遍历数组的顺序不固定，排好再用
+  [[ ! -s $WORK/xpool.tsv ]] || sort -t "$(printf '\t')" -k1,1 -k3,3nr -k2,2 -o "$WORK/xpool.tsv" "$WORK/xpool.tsv"
   # 分析出错不能当成“没有分流”
   [[ -s $WORK/exits.tsv && -s $WORK/targets.tsv ]] || die "分析结果时出错：没有出口数据"
 }
@@ -2585,7 +2636,7 @@ function bar(k, enc, j, st, v, w, n, nw, s) {
 # 逐 IP 按网段汇总：每个 /24 连上几次、试了几次、走哪个出口、有没有改道；同一个 /16 里几段
 # 结果都一样就并成一行
 function nets(t, m, i, j, na, ipa, ipb, ipc, a, q, n24, n16, s, rk, r, st) {
-  nn = 0; nrow = 0
+  nn = 0; nrow = 0; sdl = ""
   for (t = 1; t <= nt; t++) {
     if (!SHOW[t]) continue
     m = split(IPM[t], ipa, " ")
@@ -2596,8 +2647,15 @@ function nets(t, m, i, j, na, ipa, ipb, ipc, a, q, n24, n16, s, rk, r, st) {
       NI[n24]++
       st = ipc[2]
       split(ipc[3], q, "/"); NOKS[n24] += q[1]; NTRS[n24] += q[2]
-      if (st == "dead") ND[n24]++
-      else {
+      if (st == "dead") {
+        ND[n24]++
+        if (ipc[5] != "" && ipc[5] != "-") {
+          NLC[n24]++
+          if (index("/" NLN[n24] "/", "/" ipc[5] "/") == 0) NLN[n24] = NLN[n24] (NLN[n24] == "" ? "" : "/") ipc[5]
+          # 要点里“分流不通”那一条提到的出口：整个目标都被分过去的才算
+          if (NSD[t] > 0 && index("、" sdl "、", "、" ipc[5] "、") == 0) sdl = sdl (sdl == "" ? "" : "、") ipc[5]
+        }
+      } else {
         if (st == "flaky") NFK24[n24]++
         if (st == "tls") NTL24[n24]++
         if (st == "-") NU24[n24]++
@@ -2621,7 +2679,9 @@ function nets(t, m, i, j, na, ipa, ipb, ipc, a, q, n24, n16, s, rk, r, st) {
     else if (NU24[n24] + 0 == NI[n24]) s = "untested:" NL[n24]
     else s = "ok:" NL[n24]
     SG[n24] = s
-    s = s "|" ((n24 in NDV) ? NDV[n24] "@" NDH[n24] : "")
+    # 这个网段连不上的 IP，路由全都指向别的出口的线路，才把线路写出来
+    if (NLC[n24] + 0 < ND[n24] + 0) NLN[n24] = ""
+    s = s "|" ((n24 in NDV) ? NDV[n24] "@" NDH[n24] : "") "|" NLN[n24]
     n16 = n24; sub(/\.[0-9]+$/, "", n16)
     if (!(n16 in S16)) S16[n16] = s
     else if (S16[n16] != s) S16[n16] = "*"
@@ -2634,6 +2694,7 @@ function nets(t, m, i, j, na, ipa, ipb, ipc, a, q, n24, n16, s, rk, r, st) {
     r = RIX[rk]
     ROK[r] += NOKS[n24]; RTR[r] += NTRS[n24]
     if ((n24 in NDV) && (!(r in RDV) || NDV[n24] < RDV[r])) { RDV[r] = NDV[n24]; RDH[r] = NDH[n24] }
+    if (NLN[n24] != "" && RLN[r] == "") RLN[r] = NLN[n24]
     for (t = 1; t <= nt; t++)
       if (((n24, t) in NT) && !((r, t) in ROWT)) { ROWT[r, t] = 1; RTC[r]++; if (RTC[r] == 1) RT1[r] = TN[t]; RTN[r] = RTN[r] (RTN[r] == "" ? "" : "、") TN[t] }
   }
@@ -2734,7 +2795,7 @@ FILENAME == F_TARGETS {
   nt++; TC[nt] = $1; TN[nt] = $2; PL[nt] = $3; PX[nt] = $4; PE[nt] = $5; PM[nt] = $6; PA[nt] = $7; PT[nt] = $8; PO[nt] = $9
   EL[nt] = $10; EX[nt] = $11; EE[nt] = $12; EM[nt] = $13; KC[nt] = $14; IC[nt] = $15; HC[nt] = $16
   RCH[nt] = $17; IPM[nt] = $18; BI[nt] = $19 + 0; FLP[nt] = $20 + 0
-  NDD[nt] = $21 + 0; NDL[nt] = $22 + 0; NTL[nt] = $23 + 0; NFK[nt] = $24 + 0
+  NDD[nt] = $21 + 0; NDL[nt] = $22 + 0; NTL[nt] = $23 + 0; NFK[nt] = $24 + 0; NSD[nt] = $26 + 0
   SNX[nt] = ($25 == "" ? "-" : $25)
   if (!($1 in CL)) { nc++; CO[nc] = $1; CL[$1] = $1 }
   CCOUNT[$1]++
@@ -2758,6 +2819,7 @@ FILENAME == F_TARGETS {
   if ($17 == "partial") { npart++; part = part (part == "" ? "" : "、") $2 }
   if ($17 == "dead") {
     if ($21 + 0 > 0) { nupdead++; updead = updead (updead == "" ? "" : "、") $2 }
+    else if ($26 + 0 > 0) { nsdead++; sdead = sdead (sdead == "" ? "" : "、") $2 }
     else { nalldead++; alldead = alldead (alldead == "" ? "" : "、") $2 }
     # judge 也把它算进“解析失败或连不上”，结论里不重复说
     if ($4 == "-" && ($5 == "dns" || $5 == "noconn")) ndeadover++
@@ -2776,6 +2838,7 @@ FILENAME == F_SNI { nsn++; SN[nsn] = $1; SS[nsn] = $2; SR[nsn] = $3; SLT[nsn] = 
 FILENAME == F_DNSQ { nq++; QN[nq] = $1; QV[nq] = $2; next }
 FILENAME == F_UNSTABLE { nun++; UE[nun] = $1; UN[nun] = $2; next }
 FILENAME == F_POOL { np++; PIP[np] = $1; PCN[np] = $2; next }
+FILENAME == F_XPOOL { XPN[$1]++; XPM[$1, XPN[$1]] = $2; XPC[$1, XPN[$1]] = $3; next }
 FILENAME == F_DETAIL { ndt++; DL[ndt] = $0; next }
 
 END {
@@ -2829,7 +2892,7 @@ END {
   } else if (V == "dns_tampered") {
     kind = "warn"; label = "DNS 异常"
     head = "出口没有分流，但 DNS 被动了手脚"
-    if (npart + nupdead > 0) head = head "，还有 " (npart + nupdead) " 个目标被按 IP 拦"
+    if (npart + nupdead + nsdead > 0) head = head "，还有 " (npart + nupdead + nsdead) " 个目标被按 IP 拦"
   } else if (V == "blocked") {
     kind = "warn"; label = "IP 拦截"
     head = "出口没有分流，但有目标连不上，像是被按 IP 拦截"
@@ -2869,11 +2932,11 @@ END {
     else T3[2] = DIM "未见 DNS 触发" R
   }
 
-  nblk = npart + nupdead
+  nblk = npart + nupdead + nsdead
   if (nblk > 0) {
     T1[3] = RED "✗ 按 IP 拦截" R
-    T2[3] = (npart > 0) ? npart " 个部分不通" : nupdead " 个全不通"
-    T3[3] = (npart > 0 && nupdead + nalldead > 0) ? (nupdead + nalldead) " 个全不通" : (ndivnet > 0 ? DIM ndivnet " 个网段改道" R : "")
+    T2[3] = (npart > 0) ? npart " 个部分不通" : (nupdead + nsdead) " 个全不通"
+    T3[3] = (npart > 0 && nupdead + nsdead + nalldead > 0) ? (nupdead + nsdead + nalldead) " 个全不通" : (ndivnet > 0 ? DIM ndivnet " 个网段改道" R : "")
   } else if (nalldead > 0) { T1[3] = YEL "? " nalldead " 个连不上" R; T2[3] = DIM "原因不明" R; T3[3] = "" }
   else { T1[3] = GRN "✓ 正常" R; T2[3] = DIM "没有 IP 被拦" R; T3[3] = "" }
 
@@ -2940,6 +3003,11 @@ END {
     note("bad", "IP 拦截", nupdead " 个目标全部 IP 连不上，且路由在内网段改了道：是上游在拦截")
     more(clip(updead, 52))
   }
+  if (nsdead > 0) {
+    if (!NOTES++) print ""
+    note("bad", "分流不通", nsdead " 个目标全部 IP 连不上，路由走的是 " sdl " 出口的线路：分过去之后不通")
+    more(clip(sdead, 52))
+  }
   if (ndivnet > 0) {
     if (!NOTES++) print ""
     note("warn", "改道", ndivnet " 个网段在第 " divpos " 跳改道，走 " maskall(divhops) "；" (ndivdead > 0 ? ndivdead " 个改道后连不上" : "还连得上，出口未知"))
@@ -3004,6 +3072,13 @@ END {
     if (XDEF[j] && np > 1) {
       n2 = 0
       for (i = 1; i <= np; i++) IT[++n2] = maskall(PIP[i]) "（" PCN[i] " 次）"
+      flow(IT, n2, W - 18, 2, "、")
+      for (i = 1; i <= FLN; i++) print spc(12) DIM (i == 1 ? "出口池  " : "        ") FL[i] R
+    }
+    # 非默认出口是一个地址池时，同一个 /24 里的几个 IP 合成了这一个出口
+    if (XPN[XI[j]] + 0 > 1) {
+      n2 = 0
+      for (i = 1; i <= XPN[XI[j]]; i++) IT[++n2] = maskall(XPM[XI[j], i]) "（" XPC[XI[j], i] " 次）"
       flow(IT, n2, W - 18, 2, "、")
       for (i = 1; i <= FLN; i++) print spc(12) DIM (i == 1 ? "出口池  " : "        ") FL[i] R
     }
@@ -3116,7 +3191,7 @@ END {
         else if (lets == "") res = GRN "✓" R DIM " 出口未知" R
         else res = GRN "✓" R " " lcs(lets)
         if ((k == 2 || k == 3) && lets != "") res = res " " lcs(lets)
-        rt = (r in RDV) ? YEL "第 " RDV[r] " 跳改道" R : DIM "-" R
+        rt = (r in RDV) ? YEL "第 " RDV[r] " 跳改道" R : (RLN[r] != "" ? DIM "走 " R lcs(RLN[r]) DIM " 线路" R : DIM "-" R)
         tg = (RTC[r] > 1) ? fit(RT1[r], 26 - vis(" 等 " RTC[r] " 个")) " 等 " RTC[r] " 个" : fit(RT1[r], 26)
         print "  " pad(RLAB[r], 18) pad(res, 14) pad(DIM ROK[r] "/" RTR[r] R, 6) pad(rt, 12) tg
       }
@@ -3125,7 +3200,7 @@ END {
   # 每个目标每个 IP 的结果，-v 时才列
   if (VERBOSE && nipshow > 0) {
     sec("逐 IP 明细", "连不上是复测两次都不通")
-    print "  " DIM pad("目标", 24) pad("IP", 16) pad("连通", 6) pad("结果", 13) "改道去了" R
+    print "  " DIM pad("目标", 24) pad("IP", 16) pad("连通", 6) pad("结果", 13) "路由" R
     for (t = 1; t <= nt; t++) {
       if (!SHOW[t]) continue
       m = split(IPM[t], ipa, " ")
@@ -3138,7 +3213,8 @@ END {
         else if (ipc[1] == "?") v = GRN "✓" R DIM " 出口未知" R
         else v = GRN "✓" R " " lcs(ipc[1])
         s = ""
-        if (ipc[4] != "0" && ipc[4] != "") { split(ipc[4], q, "@"); s = YEL "→ " q[2] R }
+        if (ipc[4] != "0" && ipc[4] != "") { split(ipc[4], q, "@"); s = YEL "改道 → " q[2] R }
+        else if (ipc[5] != "" && ipc[5] != "-") s = DIM "走 " R lcs(ipc[5]) DIM " 线路" R
         print "  " pad(i == 1 ? fit(TN[t], 23) : "", 24) pad(ipb[1], 16) pad(DIM ipc[3] R, 6) pad(v, 13) s
       }
     }
@@ -3234,7 +3310,7 @@ END {
   }
 }
 AWK
-  touch "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
+  touch "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/detail.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv" "$WORK/xpool.tsv"
   # 出口池按回显次数排，默认的那个排最前
   sort -t "$(printf '\t')" -k4,4nr -k2,2nr "$WORK/pool.tsv" > "$WORK/pool_sorted.tsv"
   awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" -v SHARE="${REPORT_SHARE:-0}" -v MASK="$MASK" \
@@ -3242,10 +3318,10 @@ AWK
     -v F_CATS="$WORK/cats.txt" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNI="$WORK/sni.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
     -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
-    -v F_POOL="$WORK/pool_sorted.tsv" \
+    -v F_POOL="$WORK/pool_sorted.tsv" -v F_XPOOL="$WORK/xpool.tsv" \
     -f "$WORK/report.awk" \
     "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" \
-    "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/unstable.tsv" "$WORK/pool_sorted.tsv" "$WORK/detail.tsv" || die "生成报告时出错"
+    "$WORK/trigger.tsv" "$WORK/sni.tsv" "$WORK/dnsq.tsv" "$WORK/unstable.tsv" "$WORK/pool_sorted.tsv" "$WORK/xpool.tsv" "$WORK/detail.tsv" || die "生成报告时出错"
 }
 
 # 方便分享的报告：summary 是几行纯文本，markdown 是完整表格。默认打码 IP，不带主机名、反解和路由
@@ -3309,7 +3385,7 @@ FILENAME == F_TARGETS {
   if ($14 == "static") nstatic++
   if (BI[nt]) nbyip++
   if ($17 == "partial") npart++
-  if ($17 == "dead") { if ($21 + 0 > 0) nupdead++; else nalldead++ }
+  if ($17 == "dead") { if ($21 + 0 > 0) nupdead++; else if ($26 + 0 > 0) nsdead++; else nalldead++ }
   if ($21 + $22 > 0) ndiv++
   if ($10 != "-") HASE = 1
   next
@@ -3317,10 +3393,12 @@ FILENAME == F_TARGETS {
 FILENAME == F_TRIGGER { if ($4 != "-") { tested++; if ($4 != $5) fired++ } next }
 FILENAME == F_UNSTABLE { nun++; next }
 FILENAME == F_POOL { np++; next }
+FILENAME == F_XPOOL { XPN[$1]++; next }
 function exit_line(j, s) {
   s = XL[j] (XDEF[j] ? " 默认" : "") "  " mask(XI[j]) "  " XORG[j]
   if (XCC[j] != "-") s = s "  " XCC[j]
   if (XKIND[j] == "hosting") s = s "  标记为机房"
+  if (XPN[XI[j]] + 0 > 1) s = s "  出口池 " XPN[XI[j]] " 个 IP"
   return s
 }
 function cat_line(k, j, v, s) {
@@ -3357,6 +3435,7 @@ END {
   if (nbyip > 0) ipnote = nbyip " 个目标按 IP 分流"
   if (npart > 0) ipnote = ipnote (ipnote == "" ? "" : "，") npart " 个目标部分 IP 连不上"
   if (nupdead > 0) ipnote = ipnote (ipnote == "" ? "" : "，") nupdead " 个目标全部 IP 连不上且路由改道"
+  if (nsdead > 0) ipnote = ipnote (ipnote == "" ? "" : "，") nsdead " 个目标被分到非默认出口的线路后全部 IP 连不上"
   if (nalldead > 0) ipnote = ipnote (ipnote == "" ? "" : "，") nalldead " 个目标全部 IP 连不上"
   if (ndiv > 0) ipnote = ipnote (ipnote == "" ? "" : "，") ndiv " 个目标的路由在内网段改道"
   sninote = ""
@@ -3409,7 +3488,7 @@ END {
   print ""
   print "| 出口 | IP | 运营商 | 国家 |"
   print "|---|---|---|---|"
-  for (j = 1; j <= nx; j++) print "| " XL[j] (XDEF[j] ? "（默认）" : "") " | " mask(XI[j]) " | " XORG[j] " | " XCC[j] " |"
+  for (j = 1; j <= nx; j++) print "| " XL[j] (XDEF[j] ? "（默认）" : "") " | " mask(XI[j]) (XPN[XI[j]] + 0 > 1 ? "（出口池 " XPN[XI[j]] " 个 IP）" : "") " | " XORG[j] " | " XCC[j] " |"
   print ""
   print "## 分类概览"
   print ""
@@ -3457,13 +3536,13 @@ END {
   print "由 [ExitRay](https://github.com/YePiXpert/exitray) 生成"
 }
 AWK
-  touch "$WORK/trigger.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
+  touch "$WORK/trigger.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv" "$WORK/xpool.tsv"
   awk -v MODE="$1" -v MASK="$MASK" \
     -v F_CATS="$WORK/cats.txt" -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits_info.tsv" \
     -v F_TARGETS="$WORK/targets.tsv" -v F_TRIGGER="$WORK/trigger.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
-    -v F_POOL="$WORK/pool.tsv" \
+    -v F_POOL="$WORK/pool.tsv" -v F_XPOOL="$WORK/xpool.tsv" \
     -f "$WORK/share.awk" \
-    "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" \
+    "$WORK/cats.txt" "$WORK/env.tsv" "$WORK/xpool.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" \
     "$WORK/unstable.tsv" "$WORK/pool.tsv" || die "生成分享报告时出错"
 }
 
@@ -3473,17 +3552,20 @@ BEGIN { FS = "\t" }
 function s(v) { gsub(/[\\"]/, "", v); return "\"" v "\"" }
 function sn(v) { return (v == "-" || v == "") ? "null" : s(v) }
 FILENAME == F_ENV { ENVV[$1] = $2; next }
+# 非默认出口的地址池：同一个 /24 里的几个 IP 合成了一个出口，pool 里是这些 IP 各回显了几次
+FILENAME == F_XPOOL { XP[$1] = XP[$1] (XP[$1] == "" ? "" : ",") "{\"ip\":" s($2) ",\"seen\":" ($3 + 0) "}"; next }
 FILENAME == F_EXITS {
   nx++
   X[nx] = "{\"id\":" s($1) ",\"ip\":" s($2) ",\"default\":" ($4 ? "true" : "false") ",\"seen\":" ($3 + 0) \
-    ",\"org\":" sn($6) ",\"country\":" sn($7) ",\"city\":" sn($8) ",\"hostname\":" sn($9) ",\"flag\":" sn($10) ",\"route\":" sn($5) "}"
+    ",\"org\":" sn($6) ",\"country\":" sn($7) ",\"city\":" sn($8) ",\"hostname\":" sn($9) ",\"flag\":" sn($10) ",\"route\":" sn($5) ",\"pool\":[" XP[$2] "]}"
   if ($4) DEF = $2
   next
 }
 FILENAME == F_TARGETS {
   nt++
-  # 逐 IP 的结果：$18 是“IP=出口:状态:连上次数/尝试次数:改道”，空格分隔。出口可以是 A/B，不知道是 ?；
-  # 状态是 ok、flaky、tls、dead，没试过是 -；改道写成“位置@那一跳”，没有是 0
+  # 逐 IP 的结果：$18 是“IP=出口:状态:连上次数/尝试次数:改道:线路”，空格分隔。出口可以是 A/B，不知道是 ?；
+  # 状态是 ok、flaky、tls、dead，没试过是 -；改道写成“位置@那一跳”，没有是 0；线路是连不上的 IP 的路由
+  # 指向的非默认出口，没有是 -
   ips = ""
   m = split($18 == "-" ? "" : $18, ia, " ")
   for (k = 1; k <= m; k++) {
@@ -3494,7 +3576,7 @@ FILENAME == F_TARGETS {
     dv = "null"
     if (ic[4] != "0" && ic[4] != "") { split(ic[4], dh, "@"); dv = "{\"hop\":" (dh[1] + 0) ",\"ip\":" s(dh[2]) "}" }
     ips = ips (k > 1 ? "," : "") "{\"ip\":" s(ib[1]) ",\"exit_ids\":[" ids "],\"reachable\":" (ic[2] == "dead" ? "false" : (ic[2] == "-" ? "null" : "true")) \
-      ",\"state\":" sn(ic[2]) ",\"connected\":" (tr[1] + 0) ",\"attempts\":" (tr[2] + 0) ",\"diverted\":" dv "}"
+      ",\"state\":" sn(ic[2]) ",\"connected\":" (tr[1] + 0) ",\"attempts\":" (tr[2] + 0) ",\"diverted\":" dv ",\"route_exit_id\":" sn(ic[5]) "}"
   }
   T[nt] = "{\"category\":" s($1) ",\"name\":" s($2) \
     ",\"system_dns\":{\"exit_id\":" sn($3) ",\"exit\":" sn($4) ",\"evidence\":" sn($5) ",\"method\":" sn($6) ",\"agree\":" ($7 + 0) ",\"rounds\":" ($8 + 0) ",\"others\":" sn($9) "}" \
@@ -3537,12 +3619,12 @@ END {
   printf "},\"dns_hijack\":%s,\"ipv6\":%s}\n", (ENVV["dns_hijack"] == 1 ? "true" : "false"), sn(ENVV["ipv6"])
 }
 AWK
-  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
+  touch "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" "$WORK/env.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv" "$WORK/xpool.tsv"
   awk -v F_ENV="$WORK/env.tsv" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNIFF="$WORK/sniff.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
-    -v F_UNSTABLE="$WORK/unstable.tsv" -v F_POOL="$WORK/pool.tsv" \
+    -v F_UNSTABLE="$WORK/unstable.tsv" -v F_POOL="$WORK/pool.tsv" -v F_XPOOL="$WORK/xpool.tsv" \
     -f "$WORK/json.awk" \
-    "$WORK/env.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" \
+    "$WORK/env.tsv" "$WORK/xpool.tsv" "$WORK/exits_info.tsv" "$WORK/targets.tsv" "$WORK/trigger.tsv" "$WORK/sniff.tsv" "$WORK/dnsq.tsv" \
     "$WORK/unstable.tsv" "$WORK/pool.tsv" || die "生成 JSON 时出错"
 }
 
@@ -3552,8 +3634,8 @@ judge() {
     FILENAME == F_ENV { if ($1 == "dns_hijack" && $2 == 1) hijack = 1; next }
     FILENAME == F_EXITS { nx++; next }
     # 同一个域名有的 IP 连得上、有的复测两次都连不上，是按 IP 拦截，不是目标自己挂了。
-    # 全部 IP 都连不上，但路由在上游的内网段就改了道，同样是上游在处理这个 IP
-    $17 == "partial" || ($17 == "dead" && $21 + 0 > 0) { ipblock++ }
+    # 全部 IP 都连不上，但路由在上游的内网段就改了道，或者走的是非默认出口的线路，同样是上游在处理这个 IP
+    $17 == "partial" || ($17 == "dead" && $21 + $26 > 0) { ipblock++ }
     $19 == 1 { byip++ }
     $21 + $22 > 0 { diverted++ }
     $23 + 0 > 0 { tls++ }

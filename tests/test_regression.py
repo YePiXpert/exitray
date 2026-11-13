@@ -535,10 +535,10 @@ class AnalyzeTests(unittest.TestCase):
                 for k, r in enumerate(results, 1)]
 
     @staticmethod
-    def ip_entry(ip, exits, state, connected, attempts, diverted=None):
-        """JSON 里一个 IP 的结果。"""
+    def ip_entry(ip, exits, state, connected, attempts, diverted=None, route=None):
+        """JSON 里一个 IP 的结果。route 是连不上的 IP 的路由指向的非默认出口。"""
         return {'ip': ip, 'exit_ids': exits, 'reachable': None if state == '-' else state != 'dead', 'state': None if state == '-' else state,
-                'connected': connected, 'attempts': attempts, 'diverted': diverted}
+                'connected': connected, 'attempts': attempts, 'diverted': diverted, 'route_exit_id': route}
 
     def test_partly_unreachable_target_is_a_block(self):
         # 加密 DNS 解析到的旧网段复测两次都连不上，系统 DNS 给的新网段正常：像是按 IP 拦截
@@ -1216,6 +1216,60 @@ class AnalyzeTests(unittest.TestCase):
         self.assertEqual(self.json()['exit_pool'], [])
         self.assertNotIn('出口池', self.text())
 
+    def other_exit_rows(self, first, second):
+        """两个目标各回显了一个非默认出口的 IP，线路相同。"""
+        return [('T', 'P', 'meta', 'f.example', 1, '2.2.2.2', first, 'meta', '-', '-', self.B_PATH, 'ok'),
+                ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', second, 'cloudflare', '-', '-', self.B_PATH, 'ok')]
+
+    OTHER_TARGETS = [('meta', 'f.example'), ('shop', 's.example'), ('ai', 'a.example')]
+
+    def test_addresses_of_one_exit_pool_are_one_exit(self):
+        # 非默认出口是个地址池：两个目标各回显了同一个 /24 里的一个 IP（CGNAT、WARP 都这样）。
+        # 这是一个出口、回显了两次，不是两个各回显一次、还要打问号的出口
+        self.analyze(rows(*self.calibration(), self.direct(), *self.other_exit_rows('9.9.9.5', '9.9.9.10')),
+                     self.OTHER_TARGETS, orgs={'9.9.9.10': 'AS64501 Other Transit'})
+        self.assert_verdict('split')
+        data = self.json()
+        self.assertEqual([(e['id'], e['ip']) for e in data['exits']], [('A', '8.8.8.8'), ('B', '9.9.9.10')])
+        self.assertEqual(data['exits'][1]['seen'], 2)
+        self.assertEqual(sorted((p['ip'], p['seen']) for p in data['exits'][1]['pool']), [('9.9.9.10', 1), ('9.9.9.5', 1)])
+        self.assertEqual(data['exits'][0]['pool'], [])
+        self.assertEqual({t['name']: t['system_dns']['exit_id'] for t in data['targets']},
+                         {'f.example': 'B', 's.example': 'B', 'a.example': 'A'})
+        # 两次回显互相印证，不用排队复测，也不用说“可能是误报”
+        self.assertEqual((self.work / 'once.tsv').read_text(), '')
+        text = self.text()
+        self.assertIn('发现 2 个出口，其中 1 个不是默认运营商', text)
+        self.assertRegex(text, r'出口池 +9\.9\.9\.10（1 次）、9\.9\.9\.5（1 次）')
+        self.assertNotIn('只回显过 1 次', text)
+        self.assertIn('出口池 2 个 IP', self.summary())
+        self.assertIn('（出口池 2 个 IP）', self.markdown())
+
+    def test_exits_in_different_networks_stay_separate(self):
+        # 不在同一个 /24 就是两个出口，各回显一次的照旧要复测
+        self.analyze(rows(*self.calibration(), self.direct(), *self.other_exit_rows('9.9.9.5', '9.9.8.10')),
+                     self.OTHER_TARGETS)
+        data = self.json()
+        self.assertEqual(sorted(e['ip'] for e in data['exits']), ['8.8.8.8', '9.9.8.10', '9.9.9.5'])
+        self.assertEqual([e['pool'] for e in data['exits']], [[], [], []])
+        self.assertEqual(len((self.work / 'once.tsv').read_text().splitlines()), 2)
+
+    def test_exit_next_to_the_default_one_is_not_merged_into_it(self):
+        # 和默认出口同一个 /24 的另一个 IP 不在这里合并：是不是出口池，要靠连问几次中立回显来判断
+        self.analyze(rows(*self.calibration(), self.direct(), *self.other_exit_rows('8.8.8.99', '8.8.8.99')),
+                     self.OTHER_TARGETS)
+        data = self.json()
+        self.assertEqual([e['ip'] for e in data['exits']], ['8.8.8.8', '8.8.8.99'])
+        self.assertEqual(data['verdict'], 'split')
+
+    def test_trigger_inside_an_exit_pool_is_not_a_trigger(self):
+        # 触发测试前后看到的是同一个地址池里的两个 IP：只是池里换了一个，不是明文查询换了出口
+        self.analyze(rows(*self.calibration(), self.direct(), *self.other_exit_rows('9.9.9.5', '9.9.9.10')),
+                     self.OTHER_TARGETS)
+        write(self.work / 'trigger.tsv', 'meta\tf.example\t5.5.5.5\t9.9.9.5\t9.9.9.10\tok\n')
+        self.run_report('settle_triggers')
+        self.assertEqual((self.work / 'trigger.tsv').read_text(), 'meta\tf.example\t5.5.5.5\t9.9.9.10\t9.9.9.10\tok\n')
+
     def test_tls_failure_is_not_an_ip_block(self):
         # TCP 连得上、握手不成：不是按 IP 拦截，也不算连不上
         tls = ('T', 'P', 'meta', 'f.example', 1, '57.144.1.1', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'tls')
@@ -1248,6 +1302,55 @@ class AnalyzeTests(unittest.TestCase):
         self.assertEqual(target['ips'][1], self.ip_entry('57.144.1.1', ['A'], '-', 0, 0))
         self.assertEqual(data['verdict'], 'clean')
         self.assertRegex(self.text(), r'57\.144\.1\.0/24 +· 没试过 A +0/0')
+
+    def test_unreachable_ip_on_another_exits_line_is_blamed_on_that_line(self):
+        # 全部 IP 复测两次都连不上，路由却和 9.9.9.9 那条已确认的线路一样：是被分过去之后不通，
+        # 不能说成“分不清是目标挂了还是被拦”
+        dead = ('T', 'E', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', self.B_PATH, 'dead')
+        self.analyze(rows(*self.calibration(), self.direct(), dead, *self.retests(dead, None, None), *self.b_exit()),
+                     [('ai', 'a.example'), ('meta', 'f.example'), ('ai', 'g.example'), ('ai', 'h.example')])
+        self.assert_verdict('split')
+        data = self.json()
+        target = data['targets'][1]
+        self.assertEqual(target['reach'], 'dead')
+        self.assertEqual(target['ips'], [self.ip_entry('31.13.1.1', [], 'dead', 0, 3, route='B')])
+        self.assertEqual(data['coverage']['ip_blocked'], 1)
+        text = self.text()
+        self.assertIn('1 个目标全部 IP 连不上，路由走的是 B 出口的线路', text)
+        self.assertRegex(text, r'31\.13\.1\.0/24 +✗ 连不上 +0/3 +走 B 线路 +f\.example')
+        self.assertNotIn('分不清是目标挂了还是被拦', text)
+        self.assertIn('1 个全不通', text)
+        self.assertIn('1 个目标被分到非默认出口的线路后全部 IP 连不上', self.summary())
+        self.assertRegex(self.run_report('VERBOSE=1 report_text'), r'31\.13\.1\.1 +0/3 +✗ 连不上 +走 B 线路')
+
+    def test_target_with_only_some_unreachable_ips_on_another_line_is_not_blamed_on_it(self):
+        # 两个 IP 都连不上，一个的路由走 B 的线路，另一个走默认线路：不能把整个目标算到 B 头上，
+        # 同一个网段那一行也不写“走 B 线路”。逐 IP 的结果里照实记着
+        on_b = ('T', 'E', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', self.B_PATH, 'dead')
+        on_a = ('T', 'E', 'meta', 'f.example', 1, '31.13.1.2', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+        self.analyze(rows(*self.calibration(), self.direct(), on_b, *self.retests(on_b, None, None),
+                          on_a, *self.retests(on_a, None, None), *self.b_exit()),
+                     [('ai', 'a.example'), ('meta', 'f.example'), ('ai', 'g.example'), ('ai', 'h.example')])
+        data = self.json()
+        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('31.13.1.1', [], 'dead', 0, 3, route='B'),
+                                                     self.ip_entry('31.13.1.2', [], 'dead', 0, 3)])
+        self.assertEqual(data['coverage']['ip_blocked'], 0)
+        text = self.text()
+        self.assertIn('分不清是目标挂了还是被拦', text)
+        self.assertNotIn('分流不通', text)
+        self.assertRegex(text, r'31\.13\.1\.0/24 +✗ 连不上 +0/6 +- +f\.example')
+
+    def test_unreachable_ip_on_the_default_line_stays_unexplained(self):
+        # 路由和默认出口的线路一样，全都连不上：从这一个地方分不清是目标挂了还是被拦，不往线路上推
+        dead = ('T', 'E', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+        self.analyze(rows(*self.calibration(), self.direct(), dead, *self.retests(dead, None, None), *self.b_exit()),
+                     [('ai', 'a.example'), ('meta', 'f.example'), ('ai', 'g.example'), ('ai', 'h.example')])
+        data = self.json()
+        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('31.13.1.1', [], 'dead', 0, 3)])
+        self.assertEqual(data['coverage']['ip_blocked'], 0)
+        text = self.text()
+        self.assertIn('分不清是目标挂了还是被拦', text)
+        self.assertRegex(text, r'31\.13\.1\.0/24 +✗ 连不上 +0/3 +- +f\.example')
 
     def test_system_dns_exit_on_another_ip_is_not_called_dns_triggered(self):
         # 系统 DNS 解析到的 IP 走分流，加密 DNS 解析到的是另一个 IP、走默认出口：可能是明文查询
@@ -1717,8 +1820,10 @@ class IntegrationTests(unittest.TestCase):
         target = data['targets'][0]
         self.assertEqual((target['reach'], target['ips'][0]['state'], target['ips'][0]['reachable']), ('ok', 'tls', True))
         self.assertEqual((data['coverage']['tls_failed'], data['coverage']['ip_blocked']), (1, 0))
-        # 两轮各翻一次页面，再复测两次，复测也是翻页面
-        self.assertEqual(len([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']), 4)
+        # 两轮取回显时都连上了它的 443 端口、却没等到任何响应：再翻页面也是一样，不用再等一遍，
+        # 照样记成握手不成。翻页面的只有复测那两次
+        self.assertEqual(target['ips'][0]['attempts'], 4)
+        self.assertEqual(len([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']), 2)
 
     def test_later_rounds_still_check_that_the_ip_connects(self):
         # 第 2 轮不翻页面，但连没连上照样要记：没试过的 IP 不能当成连得上
@@ -1817,6 +1922,23 @@ class IntegrationTests(unittest.TestCase):
         lookups = [l for l in self.log.read_text().splitlines() if l.startswith('https://dns.google/resolve?name=a.example')]
         self.assertEqual(len(lookups), 4)
         self.assertEqual(len(self.requests('https://a.example/cdn-cgi/trace')), 1)
+
+    def test_trigger_test_gives_up_after_two_far_ips_that_cannot_be_reached(self):
+        # 外地节点的 IP 接连两个都等到超时也连不上：多半整段都被拦了，剩下的两个子网不再问
+        self.state_file('doh_far', 'a.example 5.5.5.5\n')
+        self.state_file('doh', 'a.example 6.6.6.6\n')
+        self.state_file('dead', '5.5.5.5\n6.6.6.6\n')
+        work = posix(self.dir / 'work')
+        result = shell(f"""
+            WORK='{work}'; mkdir -p "$WORK/fp"; touch "$WORK/trigger.tsv"
+            trigger_one ai a.example
+            cat "$WORK/trigger.tsv"
+        """, env=self.env())
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout, 'ai\ta.example\t-\t-\t-\tnoecho\n')
+        lookups = [l for l in self.log.read_text().splitlines() if l.startswith('https://dns.google/resolve?name=a.example')]
+        self.assertEqual(len(lookups), 2)
+        self.assertEqual(sorted(r['pin'] for r in self.requests('https://a.example/cdn-cgi/trace')), ['5.5.5.5', '6.6.6.6'])
 
     def test_rotating_exit_pool_is_not_a_split(self):
         # 每次回显轮流报两个出口：同一个目标连问几次就看得出来，合成一个默认出口
