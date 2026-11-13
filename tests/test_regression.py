@@ -557,6 +557,19 @@ class AnalyzeTests(unittest.TestCase):
         self.assertIn('结论：没发现第二个出口，但 DNS 被动了手脚', self.summary())
         self.assertIn('**结论：没发现第二个出口，但 DNS 被动了手脚**', self.markdown())
 
+    def test_exit_tile_agrees_with_the_headline_when_diverted_ips_are_dead(self):
+        # 改了道的 IP 全都连不上，没有弱推断的目标：抬头说“没发现第二个出口”，出口那张卡片也不能说“无分流”
+        dead = ('T', 'P', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 10.80.0.1 5.5.5.5', 'dead')
+        self.analyze(rows(*self.calibration(), self.direct(), dead, *self.retests(dead, None, None)),
+                     [('ai', 'a.example'), ('meta', 'f.example')])
+        self.assert_verdict('blocked')
+        self.assertEqual(self.json()['coverage']['weak'], 0)
+        text = self.text()
+        self.assertIn('没发现第二个出口，但有目标连不上', text)
+        self.assertIn('? 未见分流', text)
+        self.assertIn('1 个网段改道', text)
+        self.assertNotIn('无分流', text)
+
     def test_partly_blocked_target_is_not_also_listed_as_untested(self):
         # 系统 DNS 那一轮正好只测到连不上的 IP，加密 DNS 测到的 IP 连得上：这个目标已经算进“部分 IP 连不上”，
         # 不能再说它“解析失败或连不上，不影响结论”

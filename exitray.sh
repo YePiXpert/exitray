@@ -2978,7 +2978,10 @@ END {
   else if (nx >= 2) {
     T1[1] = RED "✗ 有分流" R; T2[1] = nx " 个出口"
     T3[1] = DIM (nother > 0 ? nother " 个不同运营商" : (norg == 0 ? "同一个运营商" : "运营商没查全")) R
-  } else if (nopen > 0) { T1[1] = YEL "? 未见分流" R; T2[1] = "1 个出口"; T3[1] = DIM nopen " 个待确认" R }
+  } else if (nopen + ndivnet > 0) {
+    # 和抬头一样：有证据不足的目标、有改了道的网段，都不说“无分流”
+    T1[1] = YEL "? 未见分流" R; T2[1] = "1 个出口"; T3[1] = DIM (nopen > 0 ? nopen " 个待确认" : ndivnet " 个网段改道") R
+  }
   else { T1[1] = GRN "✓ 无分流" R; T2[1] = "1 个出口"; T3[1] = DIM maskall(XI[1]) R }
 
   if (proxy) { T1[2] = DIM "- 由节点解析" R; T2[2] = DIM "经代理时不测" R; T3[2] = "" }
