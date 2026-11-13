@@ -155,7 +155,6 @@
 <text x="36.8" y="297.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">147.136.172.0/24</text>
 <text x="188.0" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">!</text>
 <text x="204.8" y="297.7" textLength="67.2" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">部分不通</text>
-<text x="280.4" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
 <text x="305.6" y="297.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/7</text>
 <text x="356.0" y="297.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
 <text x="381.2" y="297.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
@@ -172,7 +171,7 @@
 <text x="456.8" y="316.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.ruten.com.tw</text>
 <text x="36.8" y="335.7" textLength="84.0" lengthAdjust="spacing" fill="#d7dae0">57.145.x.x</text>
 <path d="M189.00,331.90L191.30,334.50L195.60,328.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="204.8" y="335.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="204.8" y="335.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">出口未知</text>
 <text x="305.6" y="335.7" textLength="42.0" lengthAdjust="spacing" fill="#8a8a8a">13/13</text>
 <text x="356.0" y="335.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
 <text x="381.2" y="335.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>
@@ -201,7 +200,7 @@
 <text x="456.8" y="392.7" textLength="134.4" lengthAdjust="spacing" fill="#d7dae0">www.whatsapp.com</text>
 <text x="36.8" y="411.7" textLength="126.0" lengthAdjust="spacing" fill="#d7dae0">147.92.243.0/24</text>
 <path d="M189.00,407.90L191.30,410.50L195.60,404.30" stroke-width="1.6" fill="none" stroke="#5fd787" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="204.8" y="411.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787">A</text>
+<text x="204.8" y="411.7" textLength="67.2" lengthAdjust="spacing" fill="#8a8a8a" font-size="15.4">出口未知</text>
 <text x="305.6" y="411.7" textLength="25.2" lengthAdjust="spacing" fill="#8a8a8a">3/3</text>
 <text x="356.0" y="411.7" textLength="16.8" lengthAdjust="spacing" fill="#ffd75f" font-size="15.4">第</text>
 <text x="381.2" y="411.7" textLength="8.4" lengthAdjust="spacing" fill="#ffd75f">2</text>

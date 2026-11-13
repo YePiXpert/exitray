@@ -540,6 +540,37 @@ class AnalyzeTests(unittest.TestCase):
         return {'ip': ip, 'exit_ids': exits, 'reachable': None if state == '-' else state != 'dead', 'state': None if state == '-' else state,
                 'connected': connected, 'attempts': attempts, 'diverted': diverted, 'route_exit_id': route}
 
+    def test_headline_does_not_claim_no_split_when_routes_were_diverted(self):
+        # 只找到一个出口、53 端口被劫持：其余目标证据都确凿时，可以说“出口没有分流”
+        self.analyze(rows(*self.calibration(), self.direct()), [('ai', 'a.example')], env='dns_hijack\t1\n')
+        self.assert_verdict('dns_tampered')
+        self.assertIn('出口没有分流，但 DNS 被动了手脚', self.text())
+        self.assertIn('结论：出口没有分流，但 DNS 被动了手脚', self.summary())
+        # 有网段的路由在内网段改了道、出口未知：改了道的流量可能从没发现的出口出去，只能说没发现第二个出口
+        self.analyze(rows(*self.calibration(), self.direct(),
+                          ('T', 'P', 'meta', 'f.example', 1, '57.145.1.1', '-', '-', '200', '-', '10.0.0.1 10.80.0.1 5.5.5.5', 'ok')),
+                     [('ai', 'a.example'), ('meta', 'f.example')], env='dns_hijack\t1\n')
+        self.assert_verdict('dns_tampered')
+        text = self.text()
+        self.assertIn('没发现第二个出口，但 DNS 被动了手脚', text)
+        self.assertNotIn('出口没有分流', text)
+        self.assertIn('结论：没发现第二个出口，但 DNS 被动了手脚', self.summary())
+        self.assertIn('**结论：没发现第二个出口，但 DNS 被动了手脚**', self.markdown())
+
+    def test_partly_blocked_target_is_not_also_listed_as_untested(self):
+        # 系统 DNS 那一轮正好只测到连不上的 IP，加密 DNS 测到的 IP 连得上：这个目标已经算进“部分 IP 连不上”，
+        # 不能再说它“解析失败或连不上，不影响结论”
+        dead = ('T', 'P', 'meta', 'f.example', 1, '31.13.1.1', '-', '-', '000', '-', '10.0.0.1 1.2.3.4', 'dead')
+        live = ('T', 'E', 'meta', 'f.example', 1, '57.144.1.1', '8.8.8.8', 'meta', '-', '-', '10.0.0.1 1.2.3.4', 'ok')
+        self.analyze(rows(*self.calibration(), self.direct(), live, dead, *self.retests(dead, None, None)),
+                     [('ai', 'a.example'), ('meta', 'f.example')])
+        self.assert_verdict('blocked')
+        self.assertEqual(self.json()['targets'][1]['reach'], 'partial')
+        text = self.text()
+        self.assertIn('1 个目标有部分 IP 连不上', text)
+        self.assertNotIn('没测成', text)
+        self.assertIn('出口没有分流，但有目标连不上', text)
+
     def test_partly_unreachable_target_is_a_block(self):
         # 加密 DNS 解析到的旧网段复测两次都连不上，系统 DNS 给的新网段正常：像是按 IP 拦截
         self.analyze(rows(*self.calibration(), self.DEAD_E, *self.retests(self.DEAD_E, None, None), self.LIVE_P),
@@ -1132,9 +1163,11 @@ class AnalyzeTests(unittest.TestCase):
         self.assert_verdict('inconclusive')
         data = self.json()
         self.assertEqual(data['targets'][1]['system_dns']['evidence'], 'weak')
-        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('57.145.1.1', ['A'], 'ok', 1, 1, {'hop': 2, 'ip': '10.80.0.1'})])
+        # 弱推断不算这个 IP 走的出口：路由改了道，出口多半不是 A
+        self.assertEqual(data['targets'][1]['ips'], [self.ip_entry('57.145.1.1', [], 'ok', 1, 1, {'hop': 2, 'ip': '10.80.0.1'})])
         text = self.text()
         self.assertIn('还连得上，出口未知', text)
+        self.assertRegex(text, r'57\.145\.1\.0/24 +✓ 出口未知 +1/1 +第 2 跳改道 +f\.example')
         self.assertRegex(text, r'f\.example +A\? +- +弱推断 +改道')
         # 概览里弱推断的那一格和证据确凿的分开画
         self.assertTrue(any(re.fullmatch(r'  Meta +1   a', l) for l in text.splitlines()), text)
@@ -1926,6 +1959,50 @@ class IntegrationTests(unittest.TestCase):
         # 头两次紧挨着，都问了；过了 30 秒的那一次问完才记下来，后两次不再问
         self.assertEqual(len(self.requests('http://2.2.2.2/')), 3)
         self.assertEqual(len(self.requests('http://3.3.3.3/')), 1)
+
+    def echo_once(self, setup, fingerprint):
+        """在加载了脚本的 bash 里跑一次 echo_by_ip，fingerprint 换成给定的函数体。返回输出。"""
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        work = posix(self.dir / 'work')
+        result = shell(f"""
+            WORK='{work}'; mkdir -p "$WORK/fp"; NOCONN="$WORK/noconn"
+            {setup}
+            fingerprint() {{ {fingerprint}; }}
+            echo_by_ip a.example 2.2.2.2
+        """, env=self.env())
+        self.assertEqual(result.stderr, '')
+        return result.stdout
+
+    # 认 CDN 时等着看目标自己的回显请求有没有发出去，最多 5 秒，然后说认不出
+    WAIT_FOR_OWN = ('for i in $(seq 1 25); do grep -q "a.example/cdn-cgi/trace" "$STUB_LOG" 2>/dev/null && '
+                    '{ echo yes > "$STUB_DIR/own_seen"; break; }; sleep 0.2; done; printf none')
+
+    def test_own_echo_request_is_sent_while_the_cdn_is_being_identified(self):
+        # 这个 IP 还没认过 CDN：认 CDN 的那次请求还没结束，目标自己的回显请求就已经发出去了。
+        # 连不上的 IP 两边都要等到超时，同时发只等一遍
+        out = self.echo_once('', self.WAIT_FOR_OWN)
+        self.assertTrue((self.state / 'own_seen').exists(), '认 CDN 的时候，目标自己的回显请求还没发')
+        self.assertEqual(out, '8.8.8.8 cloudflare')
+        # 用的就是同时发出去的那一次，没有再发一遍
+        self.assertEqual(len(self.requests('https://a.example/cdn-cgi/trace')), 1)
+
+    def test_no_extra_request_when_the_cdn_is_already_known(self):
+        # 认过 CDN 的 IP 不再同时发目标自己的回显请求：认过是别家 CDN 的，一次都不发
+        out = self.echo_once('printf meta > "$WORK/fp/2.2.2.2"', 'cat "$WORK/fp/$1"')
+        self.assertEqual(out, '')
+        self.assertEqual(self.requests('https://a.example/cdn-cgi/trace'), [])
+        self.assertEqual([r['pin'] for r in self.requests('https://www.facebook.com/diagnostics')], ['2.2.2.2'])
+        # 认过是 Cloudflare 的，照旧只发一次
+        out = self.echo_once('printf cloudflare > "$WORK/fp/2.2.2.2"', 'cat "$WORK/fp/$1"')
+        self.assertEqual(out, '8.8.8.8 cloudflare')
+        self.assertEqual(len(self.requests('https://a.example/cdn-cgi/trace')), 1)
+
+    def test_own_echo_request_is_not_used_for_another_cdn(self):
+        # 认出是别家 CDN：同时发出去的那个请求用不上，回显照那家的办法取，不拿目标自己的 /cdn-cgi/trace 充数
+        out = self.echo_once('', 'sleep 0.5; printf meta')
+        self.assertEqual(out, '')
+        self.assertEqual(len(self.requests('https://a.example/cdn-cgi/trace')), 1)
+        self.assertEqual([r['pin'] for r in self.requests('https://www.facebook.com/diagnostics')], ['2.2.2.2'])
 
     def test_trigger_test_does_not_ask_a_silent_ip_again_for_every_subnet(self):
         # 四个外地子网问到的都是同一个 IP，它又不回显：问一次就够了，结果不会变

@@ -30,7 +30,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="2.4.0"
+VERSION="2.4.1"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
@@ -1118,25 +1118,32 @@ fingerprint() {
   printf '%s' "$kind"
 }
 
-# 向这个 IP 的 443 端口发一次取回显的请求，响应体写进 $ECHO_TMP。$1 是这次请求用的域名，其余是要执行
-# 的命令。调用方设了 NOCONN（一个文件名）时，记下这一次是不是白等了一场：
+# 发一次取回显的请求，等它结束：响应体写进 $ECHO_TMP，“time_connect http_code 退出码”写进 $ECHO_TMP.w。
+# 参数是要执行的命令
+echo_req() {
+  local t rc
+  : > "$ECHO_TMP"
+  t=$("$@" -o "$ECHO_TMP" -w '%{time_connect} %{http_code}')
+  rc=$?
+  printf '%s %s\n' "${t:-0 000}" "$rc" > "$ECHO_TMP.w"
+}
+
+# 按 echo_req 留下的结果，在 NOCONN（调用方设的一个文件名）里记下那一次是不是白等了一场。$1 是那次请求用的域名：
 #   dead  TCP 没连上。连不连得上和域名无关，借别的域名问出来的也算数
 #   tls   TCP 连上了，却没等到任何 HTTP 响应。只在用的是目标自己的域名时记：换一个 SNI，被拦的情况
 #         可能不一样，借别的域名问不出这一条
 # 经代理时看到的是到代理的连接，说明不了目标连不连得上，不记
-echo_443() {
-  local sni=$1 t cur='' rc
-  shift
-  : > "$ECHO_TMP"
-  t=$("$@" -o "$ECHO_TMP" -w '%{time_connect} %{http_code}')
-  rc=$?
+echo_mark() {
+  local sni=$1 tc='' code='' rc='' cur=''
   [[ -z $PROXY && -n ${NOCONN:-} ]] || return 0
-  if [[ ! ${t% *} =~ [1-9] ]]; then
+  [[ -s $ECHO_TMP.w ]] || return 0
+  read -r tc code rc < "$ECHO_TMP.w" || [[ -n $tc ]] || return 0
+  if [[ ! $tc =~ [1-9] ]]; then
     echo dead > "$NOCONN"
   elif [[ $sni == "$name" ]]; then
     # 证书校验不过（curl 退出码 60，旧版本有时是 51）不算：对方已经在 TLS 握手里给出了证书，只是不被信任。
     # 翻页面时不校验证书，是连得上的，自签 CA、证书链不全的站点都是这样
-    if [[ ${t#* } == 000 && $rc != 51 && $rc != 60 ]]; then echo tls > "$NOCONN"; else : > "$NOCONN"; fi
+    if [[ $code == 000 && $rc != 51 && $rc != 60 ]]; then echo tls > "$NOCONN"; else : > "$NOCONN"; fi
   else
     # 借别的域名连上了：之前记的“TCP 没连上”不算数了；“握手不成”说的是目标自己的域名，留着
     [[ ! -s $NOCONN ]] || IFS= read -r cur < "$NOCONN" || true
@@ -1144,10 +1151,33 @@ echo_443() {
   fi
 }
 
+# 向这个 IP 的 443 端口发一次取回显的请求，响应体在 $ECHO_TMP，有没有白等记在 NOCONN（见 echo_mark）。
+# $1 是这次请求用的域名，其余是要执行的命令
+echo_443() {
+  local sni=$1
+  shift
+  echo_req "$@"
+  echo_mark "$sni"
+}
+
+# echo_by_ip 用，结果写进它的 ex：用目标自己的域名请求 /cdn-cgi/trace 取回显。和认 CDN 同时发出去过的，
+# 等那个请求的结果；没有就现在发，$1 是这时的超时
+own_echo() {
+  if [[ -n $ownpid ]]; then
+    wait "$ownpid"
+    ownpid=''
+    ECHO_TMP=$own echo_mark "$name"
+    ex=$(extract trace < "$own")
+  else
+    HTTP_TIMEOUT=$1 echo_443 "$name" fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace"
+    ex=$(extract trace < "$ECHO_TMP")
+  fi
+}
+
 # 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN 时，取回显的过程里连它的 443 端口白等了没有，
 # 记在那个文件里（见 echo_443），没有白等文件是空的
 echo_by_ip() {
-  local name=$1 ip=$2 kind ex='' m='' ECHO_TMP="$WORK/e.$BASHPID"
+  local name=$1 ip=$2 kind ex='' m='' ECHO_TMP="$WORK/e.$BASHPID" own='' ownpid=''
   [[ -z ${NOCONN:-} ]] || : > "$NOCONN"
   # 经代理时用主机名，让节点按自己的 DNS 配置解析
   if [[ -n $PROXY ]]; then
@@ -1159,6 +1189,13 @@ echo_by_ip() {
     esac
   fi
   if [[ -z $ex ]]; then
+    # 是 Cloudflare 或者认不出 CDN 时，都要用目标自己的域名请求一次 /cdn-cgi/trace。这个 IP 还没认过 CDN，
+    # 就把这个请求和认 CDN 的那次同时发：连不上的 IP 两边都要等到超时，一前一后就得等两遍
+    if [[ -z $PROXY && ! -s $WORK/fp/$ip ]] && ! is_ipv4 "$name"; then
+      own="$ECHO_TMP.own"
+      ECHO_TMP=$own HTTP_TIMEOUT=5 echo_req fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" &
+      ownpid=$!
+    fi
     kind=$(fingerprint "$ip")
     case $kind in
       akamai)
@@ -1173,10 +1210,7 @@ echo_by_ip() {
         ex=$(extract cloudfront < "$ECHO_TMP")
         m=cloudfront ;;
       cloudflare)
-        if ! is_ipv4 "$name"; then
-          echo_443 "$name" fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace"
-          ex=$(extract trace < "$ECHO_TMP")
-        fi
+        is_ipv4 "$name" || own_echo 8
         if [[ -z $ex ]]; then
           echo_443 www.cloudflare.com pinned www.cloudflare.com "$ip" https://www.cloudflare.com/cdn-cgi/trace
           ex=$(extract trace < "$ECHO_TMP")
@@ -1192,14 +1226,13 @@ echo_by_ip() {
         m=meta ;;
       *)
         # 80 端口不通或经 HTTP 代理时认不出 CDN，再试一次 Cloudflare 的回显路径
-        if ! is_ipv4 "$name"; then
-          HTTP_TIMEOUT=5 echo_443 "$name" fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace"
-          ex=$(extract trace < "$ECHO_TMP")
-        fi
+        is_ipv4 "$name" || own_echo 5
         m=cloudflare ;;
     esac
   fi
-  [[ ! -e $ECHO_TMP ]] || rm -f "$ECHO_TMP"
+  # 认出是别家 CDN 时，同时发出去的那个请求用不上。它通常早就结束了，等一下免得留下没收尾的进程
+  [[ -z $ownpid ]] || wait "$ownpid"
+  rm -f "$ECHO_TMP" "$ECHO_TMP.w" ${own:+"$own" "$own.w"}
   [[ -n $ex ]] && printf '%s %s' "$ex" "$m"
   return 0
 }
@@ -2272,9 +2305,10 @@ END {
     key = CT[i] SUBSEP NM[i]
     if (!(k3 in IPN)) { IPN[k3] = ++NIP[key]; IPO[key, NIP[key]] = IP[i] }
     if (EX[i] == "-") continue
+    # 这个 IP 走的出口只算回显和推断。弱推断是路由在内网段改了道，出口多半不是那个，不写进去
+    if (EV[i] != "direct" && EV[i] != "inferred") continue
     l = LETTER[EX[i]]
     if (index("/" LETS[k3] "/", "/" l "/") == 0) LETS[k3] = LETS[k3] (LETS[k3] == "" ? "" : "/") l
-    if (EV[i] != "direct" && EV[i] != "inferred") continue
     kp = k3 SUBSEP PS[i]
     if (!(kp in IPX)) IPX[kp] = EX[i]
     else if (IPX[kp] != EX[i]) IPX[kp] = "*"
@@ -2840,7 +2874,11 @@ FILENAME == F_TARGETS {
   if ($14 == "split") nsplit++
   if ($14 == "mixed") nmixed++
   if (BI[nt]) nbyip++
-  if ($17 == "partial") { npart++; part = part (part == "" ? "" : "、") $2 }
+  if ($17 == "partial") {
+    npart++; part = part (part == "" ? "" : "、") $2
+    # 系统 DNS 那一轮正好只测到连不上的 IP：judge 把它算进“解析失败或连不上”，但它已经在“部分 IP 连不上”里了
+    if ($4 == "-" && ($5 == "dns" || $5 == "noconn")) ndeadover++
+  }
   if ($17 == "dead") {
     if ($21 + 0 > 0) { nupdead++; updead = updead (updead == "" ? "" : "、") $2 }
     else if ($26 + 0 > 0) { nsdead++; sdead = sdead (sdead == "" ? "" : "、") $2 }
@@ -2907,6 +2945,9 @@ END {
   print ""
 
   # ---------- 结论。判断在 judge 里做，这里只管怎么说 ----------
+  # 只找到一个出口时，有目标证据不足，或有网段的路由改了道，都不能说“出口没有分流”：改了道的流量
+  # 可能从没发现的出口出去
+  nosplit = (nopen + ndivnet > 0) ? "没发现第二个出口" : "出口没有分流"
   if (V == "split") {
     kind = "bad"; label = "有分流"
     head = "发现 " nx " 个出口"
@@ -2915,11 +2956,11 @@ END {
     else head = head "，运营商信息没查全"
   } else if (V == "dns_tampered") {
     kind = "warn"; label = "DNS 异常"
-    head = "出口没有分流，但 DNS 被动了手脚"
+    head = nosplit "，但 DNS 被动了手脚"
     if (npart + nupdead + nsdead > 0) head = head "，还有 " (npart + nupdead + nsdead) " 个目标被按 IP 拦"
   } else if (V == "blocked") {
     kind = "warn"; label = "IP 拦截"
-    head = "出口没有分流，但有目标连不上，像是被按 IP 拦截"
+    head = nosplit "，但有目标连不上，像是被按 IP 拦截"
   } else if (V == "inconclusive") {
     # 证据不足不等于没有分流
     kind = "warn"; label = "证据不足"
@@ -3440,13 +3481,15 @@ END {
   V = ENVV["verdict"]
   nblock = ENVV["n_dnsblock"] + 0; nfake = ENVV["n_fakeip"] + 0; nweak = ENVV["n_weak"] + 0
   nopen = ENVV["n_unknown"] + nweak + nfake
+  # 有目标证据不足，或有目标的路由改了道，不能说“出口没有分流”（和文字报告的抬头一样）
+  nosplit = (nopen + ndiv > 0) ? "没发现第二个出口" : "出口没有分流"
   nother = 0; norg = 0
   for (j = 1; j <= nx; j++) if (XORG[j] == "-") norg++
   if (XORG[1] != "-")
     for (j = 2; j <= nx; j++) if (XORG[j] != "-" && asn(XORG[j]) != asn(XORG[1])) nother++
   if (V == "split") verdict = "有分流，" nx " 个出口" (nother > 0 ? "，其中 " nother " 个不是默认运营商" : (norg == 0 ? "，都属于默认运营商" : "，运营商信息没查全"))
-  else if (V == "dns_tampered") verdict = "出口没有分流，但 DNS 被动了手脚"
-  else if (V == "blocked") verdict = "出口没有分流，但有目标连不上，像是被按 IP 拦截"
+  else if (V == "dns_tampered") verdict = nosplit "，但 DNS 被动了手脚"
+  else if (V == "blocked") verdict = nosplit "，但有目标连不上，像是被按 IP 拦截"
   else if (V == "inconclusive" && ENVV["sysdns_down"] == 1) verdict = "没发现第二个出口，但系统 DNS 用不了，不能排除分流"
   else if (V == "inconclusive") verdict = "没发现第二个出口，但 " nopen "/" nt " 个目标证据不足，不能排除分流"
   else verdict = "未发现分流"

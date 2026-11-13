@@ -63,12 +63,14 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 | | 结论 | 含义 | `verdict` | 退出码 |
 |:-:|---|---|---|:-:|
 | 🔴 | **有分流** | 发现了第二个出口 | `split` | 2 |
-| 🟡 | **DNS 异常** | 出口没分流，但 53 端口被劫持，或有域名被 DNS 屏蔽 | `dns_tampered` | 2 |
-| 🟡 | **IP 拦截** | 出口没分流，但有目标被按 IP 拦截 | `blocked` | 2 |
+| 🟡 | **DNS 异常** | 没发现第二个出口，但 53 端口被劫持，或有域名被 DNS 屏蔽 | `dns_tampered` | 2 |
+| 🟡 | **IP 拦截** | 没发现第二个出口，但有目标被按 IP 拦截 | `blocked` | 2 |
 | 🟡 | **证据不足** | 没发现第二个出口，但有目标确认不了出口 | `inconclusive` | 3 |
 | 🟢 | **无分流** | 能测的目标都有证据，都走同一个出口 | `clean` | 0 |
 
-从上往下取第一条成立的。一条线路可以出口没分流，DNS 却被劫持，同时还有 IP 被拦：结论写最要紧的那条，另外两件事在卡片和要点里。系统 DNS 整个用不了时，只测得了加密 DNS，也算证据不足。
+从上往下取第一条成立的。一条线路可以只有一个出口，DNS 却被劫持，同时还有 IP 被拦：结论写最要紧的那条，另外两件事在卡片和要点里。系统 DNS 整个用不了时，只测得了加密 DNS，也算证据不足。
+
+DNS 异常和 IP 拦截的结论里，只有能测的目标都有确凿证据、也没有网段被改道时，才写“出口没有分流”；否则写“没发现第二个出口”：改了道的流量可能从没发现的出口出去。
 
 `verdict` 是 JSON 里的字段；退出码要加 `--exit-code` 才按结论给，见[定时检查和 JSON](#定时检查和-json)。
 
@@ -93,7 +95,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 <summary>同一份报告的纯文本版</summary>
 
 ```text
-  ┌─┐ ─┐┌─ ┬ ┌┬┐ ┬─┐ ┌─┐ ┬ ┬   分流检测报告  v2.4.0
+  ┌─┐ ─┐┌─ ┬ ┌┬┐ ┬─┐ ┌─┐ ┬ ┬   分流检测报告  v2.4.1
   ├┤   ├┤  │  │  ├┬┘ ├─┤ └┬┘   vps1 · 2026-11-08 21:06:38
   └─┘ ─┘└─ ┴  ┴  ┴└─ ┴ ┴  ┴    142 个目标 · 地区 tw · 用时 3 分 56 秒
 
@@ -190,10 +192,10 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 
 ## 不换出口也能动手脚
 
-有的线路只有一个出口，问题出在别处。下面这份报告：出口没有分流，但 53 端口被劫持，14 个域名被 DNS 屏蔽，Meta、LINE、虾皮的一些网段被上游改了道，连不上。
+有的线路只找到一个出口，问题出在别处。下面这份报告：53 端口被劫持，14 个域名被 DNS 屏蔽，Meta、LINE、虾皮的一些网段被上游改了道，大多连不上。
 
 <p align="center">
-  <img src="report-block.svg" alt="出口没有分流，但 53 端口被劫持、域名被 DNS 屏蔽、部分网段被上游改道后连不上" width="760">
+  <img src="report-block.svg" alt="只找到一个出口，但 53 端口被劫持、域名被 DNS 屏蔽、部分网段被上游改道后连不上" width="760">
 </p>
 
 ### DNS
@@ -220,6 +222,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 | 连得上 | 收到了响应，或者 TCP 连上了 |
 
 - 证书不被信任不算连不上。Signal 用自签 CA，不少站点证书链不全，校验不过不代表被拦。
+- 表里“结果”一栏的字母是这个网段走的出口，只算回显和推断。路由改了道、只有弱推断的写“出口未知”。
 - 表里的“连通”是连上次数/尝试次数。每一轮每个 IP 都会连一次，没试过的不会被当成连得上。
 - 同一个目标有 IP 连不上时，它其余的 IP 也再连两次，免得把碰巧连上的一次当成正常。
 - 表里的“路由”写的是这个网段的路由有什么不寻常：“第 2 跳改道”是在内网段离开了已确认的线路；“走 B 线路”是连不上的 IP，路由和 B 出口那条已确认的线路一样，也就是被分到 B 之后不通。
@@ -292,7 +295,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 
 每个目标的出口按下面的顺序取证，前一种拿不到才用后一种：
 
-- **回显**：把请求钉到目标解析出的 IP 上，让那个 IP 报出访问者 IP。
+- **回显**：把请求钉到目标解析出的 IP 上，让那个 IP 报出访问者 IP。先用 80 端口认出是哪家 CDN；这个 IP 第一次遇到时，同时用目标自己的域名请求 `/cdn-cgi/trace`，连不上的 IP 只等一遍超时。
 
   | 服务 | 回显方式 |
   |---|---|
@@ -433,7 +436,7 @@ bash exitray.sh -y -j --exit-code > result.json
 JSON 里 `split` 只表示有没有发现第二个出口，没发现不等于没有，要看 `verdict`。
 
 - `coverage` 给出各有多少个目标：直接、推断、弱推断、未知、连不上、fake-ip、DNS 屏蔽、按 IP 拦截（`ip_blocked`）、按 IP 分流（`split_by_ip`）、路由改道（`diverted`）和握手不成（`tls_failed`）。
-- 每个目标的 `ips` 是逐 IP 的结果：`exit_ids` 是走的出口；`state` 是 `ok`、`flaky`（时通时断）、`tls`（握手不成）、`dead`，没试过是 `null`；`connected` 和 `attempts` 是连上次数和尝试次数；`reachable` 只有 `dead` 时是 `false`；`diverted` 是改道的位置和那一跳的地址，没改道是 `null`；`route_exit_id` 是连不上的 IP 的路由指向的非默认出口，没有是 `null`。
+- 每个目标的 `ips` 是逐 IP 的结果：`exit_ids` 是走的出口，只算回显和推断，弱推断不算；`state` 是 `ok`、`flaky`（时通时断）、`tls`（握手不成）、`dead`，没试过是 `null`；`connected` 和 `attempts` 是连上次数和尝试次数；`reachable` 只有 `dead` 时是 `false`；`diverted` 是改道的位置和那一跳的地址，没改道是 `null`；`route_exit_id` 是连不上的 IP 的路由指向的非默认出口，没有是 `null`。
 - 目标的 `reach` 汇总成 `ok`、`partial`、`dead`，`split_by_ip` 表示几个 IP 走了不同出口，`dns_flip` 表示同一个 IP 在明文查询之后换了出口，`sni_exit_id` 是换了 SNI 之后走的出口（没变或没抽到是 `null`）。`sni_test` 里的 `changed` 和 `moved` 是出口变了、连接被转去别处的域名数。
 - `exit_pool` 是默认出口为出口池时池里的 IP，它们在 `exits` 里合成了一个。非默认出口是地址池时，池里的 IP 在那个出口自己的 `pool` 里。`unstable_exits` 是只出现过一次、复测时没有再出现的出口，不算进 `exits`，也不影响 `verdict`。
 - `intercepted` 表示有透明代理改写连接，`system_dns_down` 表示系统 DNS 基本用不了。
