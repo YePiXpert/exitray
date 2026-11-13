@@ -24,7 +24,7 @@ import fixtures  # noqa: E402
 import term2svg  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / 'splitcheck.sh'
+SCRIPT = ROOT / 'exitray.sh'
 DOCS = ROOT / 'docs'
 # 有文本样例要核对的文档
 PAGES = [ROOT / 'README.md', ROOT / 'docs' / 'guide.md']
@@ -38,7 +38,7 @@ def posix(path):
 
 def bash(code, work):
     """在加载了脚本函数的 bash 里跑一段代码，WORK 指向 work 目录。"""
-    prelude = f'export SPLITCHECK_SOURCE_ONLY=1\nsource "{posix(SCRIPT)}"\nWORK=\'{posix(work)}\'\n'
+    prelude = f'export EXITRAY_SOURCE_ONLY=1\nsource "{posix(SCRIPT)}"\nWORK=\'{posix(work)}\'\n'
     if TEST_AWK:
         prelude += f'awk() {{ command {TEST_AWK} "$@"; }}\n'
     # 按字节读：进度那一行靠 \r 回到行首，文本模式会把单独的 \r 当成换行
@@ -96,9 +96,9 @@ printf '\n'
 
 # 报告配图：文件名、场景、从哪一节开始（None 是从头）、到哪一节之前停、窗口标题
 CROPS = [
-    ('report-split.svg', 'split', None, 'DNS', 'splitcheck · 有分流的线路'),
+    ('report-split.svg', 'split', None, 'DNS', 'ExitRay · 有分流的线路'),
     ('report-detail.svg', 'split', '明细', '其他检查', None),
-    ('report-block.svg', 'block', None, 'DNS', 'splitcheck · DNS 被劫持、IP 段被拦的线路'),
+    ('report-block.svg', 'block', None, 'DNS', 'ExitRay · DNS 被劫持、IP 段被拦的线路'),
     ('report-reach.svg', 'block', '连通', '明细', None),
 ]
 
@@ -108,7 +108,7 @@ def version():
 
 
 def run_scenario(scenario):
-    work = Path(tempfile.mkdtemp(prefix='splitcheck-docs-'))
+    work = Path(tempfile.mkdtemp(prefix='exitray-docs-'))
     try:
         listing = bash("REGION=tw CATS='' TARGET_FILE=''\nload_targets\ncat \"$WORK/targets.txt\"\n", work)
         targets = [tuple(line.split()) for line in listing.splitlines() if line.strip()]
@@ -143,16 +143,18 @@ def trim(lines):
 
 
 def images(outputs):
-    work = Path(tempfile.mkdtemp(prefix='splitcheck-docs-'))
+    work = Path(tempfile.mkdtemp(prefix='exitray-docs-'))
     try:
         ui = bash(UI, work)
+        # 字标用脚本里的那三行，不另写一份。第三行末尾有空格，只去掉最后的换行
+        logo = bash('printf "%s\\n" "${LOGO[@]}"\n', work).rstrip('\n').split('\n')
     finally:
         shutil.rmtree(work, ignore_errors=True)
     result = {
-        'logo.svg': term2svg.logo(),
+        'logo.svg': term2svg.logo(logo),
         'how.svg': diagrams.how(),
         'flow.svg': diagrams.flow(),
-        'run.svg': term2svg.render(trim(ui.split('\n')), 'splitcheck'),
+        'run.svg': term2svg.render(trim(ui.split('\n')), 'ExitRay'),
     }
     for name, scenario, first, stop, title in CROPS:
         result[name] = term2svg.render(crop(outputs[scenario]['color'].split('\n'), first, stop), title)

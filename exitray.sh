@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# splitcheck — VPS / 家宽出口分流检测
+# ExitRay — VPS / 家宽出口分流检测
 #
 # 只比路由首跳看不出真实出口，这里直接问目标“你看到的访问者 IP 是什么”：
 #   直接  目标或同一 IP 上的 CDN 回显访问者 IP
@@ -19,10 +19,10 @@
 # “连不上”，证书不被信任不算。连不上的 IP 要复测，路由在内网段就离开已确认线路的算“改道”。
 #
 # 全程只读：不改系统配置，临时文件放在 mktemp 目录，退出时删除。
-# 用法见 --help，项目地址 https://github.com/YePiXpert/splitcheck
+# 用法见 --help，项目地址 https://github.com/YePiXpert/exitray
 
 if [ -z "${BASH_VERSINFO+x}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
-  echo "splitcheck: 需要 bash 4 或更新版本" >&2
+  echo "exitray: 需要 bash 4 或更新版本" >&2
   exit 1
 fi
 
@@ -30,7 +30,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="2.2.0"
+VERSION="2.3.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
@@ -92,7 +92,7 @@ FAR_SUBNETS="126.0.0.0/24 85.214.0.0/24 24.48.0.0/24 177.0.0.0/24"
 
 usage() {
   cat <<'EOF'
-用法: splitcheck.sh [选项]
+用法: exitray.sh [选项]
 
 看每个目标实际从哪个 IP 出去，判断 VPS 或节点有没有分流、是怎么分的流。
 
@@ -137,9 +137,9 @@ usage() {
 否则加密 DNS 那一轮可能受上一次运行影响。
 
 例子:
-  bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh)
-  bash splitcheck.sh -c ai,meta,telegram -n 3
-  bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
+  bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh)
+  bash exitray.sh -c ai,meta,telegram -n 3
+  bash exitray.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 EOF
 }
 
@@ -381,13 +381,13 @@ EOF
 
 die() {
   (( UI_ON )) && printf '\r\033[K' >&2
-  printf 'splitcheck: %s\n' "$*" >&2
+  printf 'exitray: %s\n' "$*" >&2
   exit 1
 }
 
 warn() {
   (( UI_ON )) && printf '\r\033[K' >&2
-  printf 'splitcheck: %s\n' "$*" >&2
+  printf 'exitray: %s\n' "$*" >&2
 }
 
 # 代理地址可能带账号密码，写进报告前要去掉
@@ -409,7 +409,9 @@ U_R='' U_B='' U_D='' U_F='' U_G='' U_C='' U_Y='' U_E=''
 SPIN=0
 SPIN_FRAMES=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
 STEP_LABEL='' STEP_TOTAL=0 STEP_FILE='' STEP_BASE=0 STEP_T0=0 STEP_DETAIL=''
-LOGO=('┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─' '└─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐' '└─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴')
+# 字标三行，每行一样宽；LOGO_RAMP 是渐变用的 256 色色号，从青到紫
+LOGO=('┌─┐ ─┐┌─ ┬ ┌┬┐ ┬─┐ ┌─┐ ┬ ┬' '├┤   ├┤  │  │  ├┬┘ ├─┤ └┬┘' '└─┘ ─┘└─ ┴  ┴  ┴└─ ┴ ┴  ┴ ')
+LOGO_RAMP=(44 38 39 33 69 105 141)
 BAR_ON='━━━━━━━━━━━━━━━━━━━━━━━━'
 BAR_OFF='────────────────────────'
 
@@ -454,16 +456,18 @@ ui_colors() {
   esac
 }
 
-# 三行的字标，256 色时从青到紫逐列渐变。参数是三行各自跟在后面的字
+# 三行的字标，256 色时从青到紫逐列渐变，色号按字标的列数平均铺开。参数是三行各自跟在后面的字
 ui_logo() {
-  local i c col ch out line
-  local -a tail=("${1:-}" "${2:-}" "${3:-}") ramp=(44 44 38 38 39 39 33 33 69 69 105 105 141 141)
+  local i c col ch out line sp width
+  local -a tail=("${1:-}" "${2:-}" "${3:-}")
   for i in 0 1 2; do
     line=${LOGO[i]}
     case $UI_DEPTH in
       256)
-        out='' c=0 col=0
         # C locale 下按字节取：空格 1 字节，框线 3 字节
+        sp=${line//[! ]/}
+        width=$(( ${#sp} + (${#line} - ${#sp}) / 3 ))
+        out='' c=0 col=0
         while (( c < ${#line} )); do
           if [[ ${line:c:1} == ' ' ]]; then
             ch=' '
@@ -472,7 +476,7 @@ ui_logo() {
             ch=${line:c:3}
             c=$((c + 3))
           fi
-          out+=$'\033[38;5;'"${ramp[col / 2]}m$ch"
+          out+=$'\033[38;5;'"${LOGO_RAMP[col * ${#LOGO_RAMP[@]} / width]}m$ch"
           col=$((col + 1))
         done
         out+=$U_R
@@ -648,7 +652,7 @@ parse_args() {
       -y|--yes)      shift ;;
       --color)       USE_COLOR=2; shift ;;
       --no-color)    USE_COLOR=0; shift ;;
-      -V|--version)  echo "splitcheck $VERSION"; exit 0 ;;
+      -V|--version)  echo "exitray $VERSION"; exit 0 ;;
       -h|--help)     usage; exit 0 ;;
       *) die "未知选项 $1，用 --help 查看用法" ;;
     esac
@@ -670,9 +674,9 @@ parse_args() {
 }
 
 # 缺路由工具或 dig 时，用系统的包管理器一条命令装齐，之后再运行就不用装了。要 root 或免密
-# sudo；--no-install 或 SPLITCHECK_NO_INSTALL=1 时不装，照旧跳过对应检查
+# sudo；--no-install 或 EXITRAY_NO_INSTALL=1 时不装，照旧跳过对应检查（改名前的 SPLITCHECK_NO_INSTALL 也认）
 install_deps() {
-  (( INSTALL )) && [[ ${SPLITCHECK_NO_INSTALL:-} != 1 ]] || return 0
+  (( INSTALL )) && [[ ${EXITRAY_NO_INSTALL:-${SPLITCHECK_NO_INSTALL:-}} != 1 ]] || return 0
   local route=0 dig=0 img=0 font=0 pm='' p missing=''
   local -a pkgs=() imgs=()
   if (( USE_ROUTE )) && ! command -v mtr >/dev/null 2>&1 && ! command -v traceroute >/dev/null 2>&1 &&
@@ -742,7 +746,7 @@ pkg_install() {
   local pm=$1 log ok=0
   shift
   PKG_ERR=''
-  log=$(mktemp "${TMPDIR:-/tmp}/splitcheck-install.XXXXXX") || return 1
+  log=$(mktemp "${TMPDIR:-/tmp}/exitray-install.XXXXXX") || return 1
   local -a lim=()
   command -v timeout >/dev/null 2>&1 && lim=(timeout 300)
   case $pm in
@@ -2233,15 +2237,15 @@ BEGIN {
     R = E "[0m"; B = E "[1m"; DIM = E "[38;5;245m"; FNT = E "[38;5;240m"
     GRN = E "[38;5;78m"; YEL = E "[38;5;221m"; RED = E "[38;5;203m"; MAG = E "[38;5;177m"; CYN = E "[38;5;80m"
     split("78 215 177 75 221 80 211 250", XC, " ")
-    split("44 44 38 38 39 39 33 33 69 69 105 105 141 141", RAMP, " ")
   } else if (DEPTH == 8) {
     R = E "[0m"; B = E "[1m"; DIM = E "[2m"; FNT = E "[2m"
     GRN = E "[32m"; YEL = E "[33m"; RED = E "[31m"; MAG = E "[35m"; CYN = E "[36m"
     split("2 3 5 4 6 7 1 7", XC, " ")
   }
-  LOGO[1] = "┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─"
-  LOGO[2] = "└─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐"
-  LOGO[3] = "└─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴"
+  # 字标和渐变的色号是 bash 传进来的
+  LOGO[1] = LOGO1; LOGO[2] = LOGO2; LOGO[3] = LOGO3
+  NRAMP = split(RAMPS, RAMP, " ")
+  LOGOW = dwidth(LOGO1)
 }
 
 # 显示宽度。C locale 下 length 数字节：· × 这类 2 字节字符占 1 格；3 字节里 E2 开头的
@@ -2349,7 +2353,7 @@ function maskall(s, out) {
   }
   return out s
 }
-# 字标：256 色时从青到紫逐列渐变
+# 字标：256 色时从青到紫逐列渐变，色号按列数平均铺开
 function logo(i, s, p, col, out, ch) {
   s = LOGO[i]
   if (DEPTH == 0) return s
@@ -2357,7 +2361,7 @@ function logo(i, s, p, col, out, ch) {
   out = ""; p = 1; col = 0
   while (p <= length(s)) {
     if (substr(s, p, 1) == " ") { ch = " "; p++ } else { ch = substr(s, p, 3); p += 3 }
-    out = out E "[38;5;" RAMP[int(col / 2) + 1] "m" ch
+    out = out E "[38;5;" RAMP[int(col * NRAMP / LOGOW) + 1] "m" ch
     col++
   }
   return out R
@@ -2937,7 +2941,7 @@ END {
   # 分享用的图片只要概览，到这里为止
   if (SHARE) {
     print ""
-    print "  " DIM "github.com/YePiXpert/splitcheck" R
+    print "  " DIM "github.com/YePiXpert/exitray" R
     exit
   }
 
@@ -3134,6 +3138,7 @@ AWK
   # 出口池按回显次数排，默认的那个排最前
   sort -t "$(printf '\t')" -k4,4nr -k2,2nr "$WORK/pool.tsv" > "$WORK/pool_sorted.tsv"
   awk -v DEPTH="$depth" -v BRIEF="$BRIEF" -v VERBOSE="$VERBOSE" -v SHARE="${REPORT_SHARE:-0}" -v MASK="$MASK" \
+    -v LOGO1="${LOGO[0]}" -v LOGO2="${LOGO[1]}" -v LOGO3="${LOGO[2]}" -v RAMPS="${LOGO_RAMP[*]}" \
     -v F_CATS="$WORK/cats.txt" -v F_EXITS="$WORK/exits_info.tsv" -v F_TARGETS="$WORK/targets.tsv" \
     -v F_TRIGGER="$WORK/trigger.tsv" -v F_SNI="$WORK/sni.tsv" -v F_DNSQ="$WORK/dnsq.tsv" \
     -v F_ENV="$WORK/env.tsv" -v F_DETAIL="$WORK/detail.tsv" -v F_UNSTABLE="$WORK/unstable.tsv" \
@@ -3269,7 +3274,7 @@ END {
   if (nun > 0) unote = "另有 " nun " 个出口只出现过一次，复测没有再出现，没有算进结论"
 
   if (MODE == "summary") {
-    print "splitcheck 分流检测 · " date region " · " nt " 个目标"
+    print "ExitRay 分流检测 · " date region " · " nt " 个目标"
     print "结论：" verdict
     if (unote != "") print unote
     if (poolnote != "") print "注意：" poolnote
@@ -3282,7 +3287,7 @@ END {
     line = "证据：直接 " (ENVV["n_direct"] + 0) " · 推断 " (ENVV["n_inferred"] + 0)
     if (nweak > 0) line = line " · 弱推断 " nweak
     print line " · 未确认 " (ENVV["n_unknown"] + ENVV["n_unreachable"] + nfake)
-    print "https://github.com/YePiXpert/splitcheck"
+    print "https://github.com/YePiXpert/exitray"
     exit
   }
 
@@ -3349,7 +3354,7 @@ END {
   print "直接：目标或同一 IP 上的 CDN 回显的访问者 IP。推断：路由和已确认出口的线路相同。弱推断：路由在内网段改了道。"
   print "DNS 触发：同一个 IP 在明文查询之后换了出口。DNS 相关：系统 DNS 解析到的 IP 走分流，加密 DNS 解析到的走默认出口。名单内：加密 DNS 下也走分流。"
   print ""
-  print "由 [splitcheck](https://github.com/YePiXpert/splitcheck) 生成"
+  print "由 [ExitRay](https://github.com/YePiXpert/exitray) 生成"
 }
 AWK
   touch "$WORK/trigger.tsv" "$WORK/unstable.tsv" "$WORK/pool.tsv"
@@ -3662,12 +3667,12 @@ AWK
 save_image() {
   local dir name why=''
   REPORT_SHARE=1 USE_COLOR=2 report_text > "$WORK/image.ansi" &&
-    render_svg "$WORK/image.ansi" splitcheck > "$WORK/image.svg" || { warn "图片没生成出来"; return 0; }
+    render_svg "$WORK/image.ansi" ExitRay > "$WORK/image.svg" || { warn "图片没生成出来"; return 0; }
   for dir in "$PWD" "${HOME:-}" "${TMPDIR:-/tmp}"; do
     [[ -n $dir && -d $dir && -w $dir ]] && break
   done
-  # splitcheck-report 开头：仓库的 .gitignore 和隐私检查都把这样的文件当成运行报告，不会被误提交
-  name="$dir/splitcheck-report-$(date +%Y%m%d-%H%M%S)"
+  # exitray-report 开头：仓库的 .gitignore 和隐私检查都把这样的文件当成运行报告，不会被误提交
+  name="$dir/exitray-report-$(date +%Y%m%d-%H%M%S)"
   if ! command -v rsvg-convert >/dev/null 2>&1; then
     why='没有 rsvg-convert'
   elif ! has_cjk_font; then
@@ -3701,7 +3706,7 @@ main() {
   (( LOW_RESOURCE )) && low_resource
   # 菜单选完才知道要不要路由工具和 dig
   install_deps
-  WORK=$(mktemp -d "${TMPDIR:-/tmp}/splitcheck.XXXXXX") || die "建不了临时目录"
+  WORK=$(mktemp -d "${TMPDIR:-/tmp}/exitray.XXXXXX") || die "建不了临时目录"
   trap cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
@@ -3772,7 +3777,7 @@ main() {
 }
 
 # 测试时只加载函数
-[[ ${SPLITCHECK_SOURCE_ONLY:-0} == 1 ]] && return 0
+[[ ${EXITRAY_SOURCE_ONLY:-0} == 1 ]] && return 0
 
 # 脚本可能经 bash -s 从 stdin 读入，子命令不能碰 stdin
 [[ -t 0 ]] && STDIN_TTY=1

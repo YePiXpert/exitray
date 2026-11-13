@@ -3,7 +3,7 @@
 按终端的字符格排版：汉字占 2 格，其余占 1 格。框线、方块、对勾、箭头这些符号画成路径，
 不依赖查看者机器上的字体；只有字母、数字和汉字是文字，每一段都写明起点和宽度。
 
-由 build.py 调用：render(行, 标题) 画一段终端输出，logo() 画字标。
+由 build.py 调用：render(行, 标题) 画一段终端输出，logo(三行字标) 画字标。
 """
 import html
 import re
@@ -226,12 +226,11 @@ def render(lines, title=None):
     return '\n'.join(out) + '\n'
 
 
-def logo():
-    """单独的字标：透明底，框线画成圆头的粗线，从青到紫渐变。浅色和深色页面上都看得清。"""
-    lines = ['┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─', '└─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐', '└─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴']
+def logo(lines):
+    """单独的字标：透明底，框线画成圆头的粗线，从青到紫渐变。浅色和深色页面上都看得清。lines 是脚本里那三行框线字。"""
     cw, lh, pad = 17, 30, 14
     w, h = pad * 2 + cw * len(lines[0]), pad * 2 + lh * 3
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="splitcheck">',
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="ExitRay">',
            f'<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="{pad}" y1="0" x2="{w - pad}" y2="0">'
            '<stop offset="0" stop-color="#00c2c7"/><stop offset="0.5" stop-color="#2f8cff"/><stop offset="1" stop-color="#a070f5"/>'
            '</linearGradient></defs>']

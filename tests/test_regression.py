@@ -16,7 +16,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / 'splitcheck.sh'
+SCRIPT = ROOT / 'exitray.sh'
 STUBS = ROOT / 'tests' / 'stubs'
 BASH = os.environ.get('TEST_BASH', shutil.which('bash') or 'bash')
 TEST_AWK = os.environ.get('TEST_AWK', '')
@@ -31,7 +31,7 @@ def posix(path):
     return Path(path).as_posix()
 
 
-PRELUDE = f'export SPLITCHECK_SOURCE_ONLY=1\nsource "{posix(SCRIPT)}"\n' + AWK_WRAPPER
+PRELUDE = f'export EXITRAY_SOURCE_ONLY=1\nsource "{posix(SCRIPT)}"\n' + AWK_WRAPPER
 
 
 def shell(code, data=None, env=None, timeout=30):
@@ -170,21 +170,24 @@ class ArgsTests(unittest.TestCase):
         # 测试里绝不能真去装软件（CI 的机器有免密 sudo）
         return subprocess.run([BASH, str(SCRIPT), *args], text=True, encoding='utf-8',
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              env={**os.environ, 'SPLITCHECK_NO_INSTALL': '1'},
+                              env={**os.environ, 'EXITRAY_NO_INSTALL': '1'},
                               stdin=subprocess.DEVNULL, timeout=20)
 
     def test_version_and_help(self):
-        self.assertEqual(self.run_script('-V').returncode, 0)
+        version = re.search(r'^VERSION="([^"]+)"', SCRIPT.read_text(encoding='utf-8'), re.M).group(1)
+        result = self.run_script('-V')
+        self.assertEqual((result.returncode, result.stdout), (0, f'exitray {version}\n'))
         out = self.run_script('--help').stdout
-        for word in ('--low-resource', '--exit-code', '--color', 'dev', 'game', 'none'):
+        for word in ('exitray.sh', '--low-resource', '--exit-code', '--color', 'dev', 'game', 'none'):
             self.assertIn(word, out)
+        self.assertNotIn('splitcheck', out.lower())
 
     def test_rejects_bad_values(self):
         for args in (['-c', 'finace'], ['-c', 'AI'], ['-c', 'ai,nope'], ['-n', '0'], ['-p', 'x'],
                      ['-r', 'mars'], ['--tracer', 'ping'], ['--nope'], ['-c']):
             result = self.run_script(*args)
             self.assertEqual(result.returncode, 1, args)
-            self.assertIn('splitcheck:', result.stderr, args)
+            self.assertIn('exitray:', result.stderr, args)
         self.assertIn('finace', self.run_script('-c', 'finace').stderr)
 
     def test_categories_match_catalog(self):
@@ -266,7 +269,7 @@ class EmitTests(unittest.TestCase):
 
     def fake_installer(self):
         """只有假的 apt-get 和 sudo，外加 install_deps 要用的几个命令。"""
-        root = Path(tempfile.mkdtemp(prefix='splitcheck-inst-'))
+        root = Path(tempfile.mkdtemp(prefix='exitray-inst-'))
         self.addCleanup(shutil.rmtree, root, True)
         bin_dir = root / 'bin'
         bin_dir.mkdir()
@@ -310,7 +313,9 @@ class EmitTests(unittest.TestCase):
         shell('USE_ROUTE=1; USE_DNS_TEST=0; install_deps', env=env)
         self.assertEqual((root / 'log').read_text().splitlines()[-1], 'install -y -qq mtr-tiny')
         (root / 'log').unlink()
-        for code, extra in (('INSTALL=0; install_deps', {}), ('install_deps', {'SPLITCHECK_NO_INSTALL': '1'}),
+        # 环境变量改名前叫 SPLITCHECK_NO_INSTALL，旧名字也要管用：不能因为改名就开始装软件
+        for code, extra in (('INSTALL=0; install_deps', {}), ('install_deps', {'EXITRAY_NO_INSTALL': '1'}),
+                            ('install_deps', {'SPLITCHECK_NO_INSTALL': '1'}),
                             ('USE_ROUTE=0; USE_DNS_TEST=0; install_deps', {})):
             result = shell(code, env={**env, **extra})
             self.assertEqual((result.returncode, result.stderr), (0, ''), code)
@@ -338,7 +343,7 @@ class AnalyzeTests(unittest.TestCase):
                 'dns_blocked': 0, 'ip_blocked': 0, 'split_by_ip': 0, 'diverted': 0, 'tls_failed': 0}
 
     def analyze(self, data, targets, env='', orgs=None, sniff=''):
-        work = Path(tempfile.mkdtemp(prefix='splitcheck-test-'))
+        work = Path(tempfile.mkdtemp(prefix='exitray-test-'))
         self.addCleanup(shutil.rmtree, work, True)
         self.work = work
         write(work / 'rows.tsv', data)
@@ -1180,14 +1185,42 @@ class AnalyzeTests(unittest.TestCase):
         for needle in ('8.8.8.8', 'host1', '1.2.3.4', '线路', '\n  DNS ─', '明细'):
             self.assertNotIn(needle, share, needle)
         self.assertIn('每格一个目标', share)
-        self.assertTrue(share.rstrip().endswith('github.com/YePiXpert/splitcheck'), share[-200:])
+        self.assertTrue(share.rstrip().endswith('github.com/YePiXpert/exitray'), share[-200:])
         # --no-mask 时不打码
         self.assertIn('8.8.8.8', plain(self.run_report('MASK=0 USE_COLOR=2 REPORT_SHARE=1 report_text')))
+
+    def test_wordmark(self):
+        logo = shell('printf "%s\\n" "${LOGO[@]}"').stdout.rstrip('\n').split('\n')
+        # 三行一样宽
+        self.assertEqual([cells(line) for line in logo], [26, 26, 26])
+        self.analyze(rows(*self.calibration(), self.direct()), [('ai', 'a.example')])
+        head = [line for line in self.run_report('USE_COLOR=0 report_text').split('\n') if line.strip()][:3]
+        for row, line in zip(logo, head):
+            self.assertTrue(line.startswith(f'  {row}   '), line)
+        self.assertIn('分流检测报告', head[0])
+
+        def codes(line):
+            """字标那 26 格各自的色号。"""
+            found = re.findall(r'\x1b\[38;5;(\d+)m[^\x1b]', line)[:26]
+            self.assertEqual(len(found), 26, line)
+            return found
+
+        # 256 色：一格一个色号，从青到紫七个色号都用上，最后一格是最后一个色号
+        colour = [line for line in self.run_report('USE_COLOR=2 report_text').split('\n') if line.strip()][:3]
+        ramp = shell('printf "%s\\n" "${LOGO_RAMP[@]}"').stdout.split()
+        for line in colour:
+            got = codes(line)
+            self.assertEqual(sorted(set(got), key=got.index), ramp)
+            self.assertEqual((got[0], got[-1]), (ramp[0], ramp[-1]))
+        # 启动画面的字标是 bash 画的，颜色要和报告里 awk 画的一模一样
+        banner = shell('UI_DEPTH=256; ui_colors; ui_logo').stderr.rstrip('\n').split('\n')
+        self.assertEqual([plain(line) for line in banner], [f'  {row}' for row in logo])
+        self.assertEqual([codes(line) for line in banner], [codes(line) for line in colour])
 
     def test_render_svg(self):
         import xml.dom.minidom
         self.analyze(rows(*self.calibration(), self.direct()), [('ai', 'a.example')])
-        svg = self.run_report('USE_COLOR=2 REPORT_SHARE=1 report_text > "$WORK/x.ansi"\nrender_svg "$WORK/x.ansi" splitcheck')
+        svg = self.run_report('USE_COLOR=2 REPORT_SHARE=1 report_text > "$WORK/x.ansi"\nrender_svg "$WORK/x.ansi" ExitRay')
         doc = xml.dom.minidom.parseString(svg.encode('utf-8'))
         root = doc.documentElement
         self.assertEqual(root.tagName, 'svg')
@@ -1207,7 +1240,7 @@ class IntegrationTests(unittest.TestCase):
     """用假的 curl、mtr、dig、getent 跑完整流程。"""
 
     def setUp(self):
-        self.dir = Path(tempfile.mkdtemp(prefix='splitcheck-int-'))
+        self.dir = Path(tempfile.mkdtemp(prefix='exitray-int-'))
         self.addCleanup(shutil.rmtree, self.dir, True)
         self.bin = self.dir / 'bin'
         self.bin.mkdir()
@@ -1268,7 +1301,7 @@ class IntegrationTests(unittest.TestCase):
         return {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}',
                 'STUB_DIR': posix(self.state), 'STUB_LOG': posix(self.log),
                 'STUB_DNSLOG': posix(self.dnslog), 'TMPDIR': posix(self.dir),
-                'SPLITCHECK_NO_INSTALL': '1', **extra}
+                'EXITRAY_NO_INSTALL': '1', **extra}
 
     def run_script(self, *args, **extra):
         return subprocess.run([BASH, posix(SCRIPT), *args], text=True, encoding='utf-8',
@@ -1303,7 +1336,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual([t['name'] for t in data['targets']], ['a.example', 'b.example'])
         self.assertEqual(data['exits'][0]['org'], 'AS64500 Example Broadband')
         # 临时目录要清理干净
-        self.assertEqual([p.name for p in self.dir.glob('splitcheck.*')], [])
+        self.assertEqual([p.name for p in self.dir.glob('exitray.*')], [])
 
     def test_full_run_with_split_and_exit_code(self):
         self.state_file('sysdns', 'a.example 2.2.2.2\nb.example 8.8.4.4\n')
@@ -1708,7 +1741,7 @@ class IntegrationTests(unittest.TestCase):
         result = self.run_script(*self.common())
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('说明', result.stdout)
-        for needle in ('分享摘要', 'splitcheck 分流检测 ·', 'Markdown', 'report.md'):
+        for needle in ('分享摘要', 'ExitRay 分流检测 ·', 'Markdown', 'report.md'):
             self.assertNotIn(needle, result.stdout + result.stderr)
 
     def test_image_is_saved(self):
@@ -1720,7 +1753,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('说明', result.stdout)
         self.assertIn('图片已保存', result.stderr)
-        images = sorted(self.dir.glob('splitcheck-report-*'))
+        images = sorted(self.dir.glob('exitray-report-*'))
         self.assertEqual(len(images), 1, images)
         image = images[0]
         self.assertIn(str(image.name), result.stderr)
@@ -1831,7 +1864,7 @@ class IntegrationTests(unittest.TestCase):
             while time.time() < deadline and self.stuck():
                 time.sleep(0.2)
             self.assertEqual(self.stuck(), [], '脚本退出后 mtr 还在跑')
-            self.assertEqual([p.name for p in self.dir.glob('splitcheck.*')], [])
+            self.assertEqual([p.name for p in self.dir.glob('exitray.*')], [])
         finally:
             proc.kill()
             for pid in self.stuck():

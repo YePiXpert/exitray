@@ -1,4 +1,4 @@
-# splitcheck 详细说明
+# ExitRay 详细说明
 
 [← 返回 README](../README.md)
 
@@ -18,7 +18,7 @@
 下面的例子用存下来的脚本，要反复运行时也建议这样：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh
+curl -fsSLO https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh
 ```
 
 ## 能看出什么
@@ -91,9 +91,9 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 <summary>同一份报告的纯文本版</summary>
 
 ```text
-  ┌─┐┌─┐┬  ┬┌┬┐┌─┐┬ ┬┌─┐┌─┐┬┌─   分流检测报告  v2.2.0
-  └─┐├─┘│  │ │ │  ├─┤├┤ │  ├┴┐   vps1 · 2026-11-08 21:06:38
-  └─┘┴  ┴─┘┴ ┴ └─┘┴ ┴└─┘└─┘┴ ┴   142 个目标 · 地区 tw · 用时 3 分 56 秒
+  ┌─┐ ─┐┌─ ┬ ┌┬┐ ┬─┐ ┌─┐ ┬ ┬   分流检测报告  v2.3.0
+  ├┤   ├┤  │  │  ├┬┘ ├─┤ └┬┘   vps1 · 2026-11-08 21:06:38
+  └─┘ ─┘└─ ┴  ┴  ┴└─ ┴ ┴  ┴    142 个目标 · 地区 tw · 用时 3 分 56 秒
 
   【有分流】 发现 3 个出口，其中 1 个不是默认运营商
 
@@ -263,7 +263,7 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
   <img src="how.svg" alt="原理：上游把请求分到不同出口，目标回显它看到的访问者 IP" width="760">
 </p>
 
-只比路由首跳的脚本，遇到内网跳多的线路常常只能给出“无法判定”，而实际可能已经分流了。splitcheck 把请求钉到目标的 IP 上，让目标自己报出它看到的访问者 IP；拿不到回显才用路由推断，每条结果都标明证据是哪一种。
+只比路由首跳的脚本，遇到内网跳多的线路常常只能给出“无法判定”，而实际可能已经分流了。ExitRay 把请求钉到目标的 IP 上，让目标自己报出它看到的访问者 IP；拿不到回显才用路由推断，每条结果都标明证据是哪一种。
 
 <p align="center">
   <img src="flow.svg" alt="检测流程：确认出口、校准线路、加密 DNS、触发测试、系统 DNS、SNI 嗅探、复测、报告" width="760">
@@ -307,19 +307,19 @@ curl -fsSLO https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitche
 加 `-i`，终端里照常出报告，另外把概览存成一张 PNG，就是报告从抬头到分类概览的部分，手机一屏看得完：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh) -i
+bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh) -i
 ```
 
-图片存在当前目录，文件名带时间，报告结尾会写出完整路径，用 SFTP 下载就行。只加 `-i` 时照样显示启动菜单。转 PNG 要 `rsvg-convert` 和中文字体，缺了会和 mtr、dig 一样自动装一次；装不了或加了 `--no-install`，就存成 SVG，用浏览器打开。
+图片存在当前目录，文件名是 `exitray-report-日期-时间.png`，报告结尾会写出完整路径，用 SFTP 下载就行。只加 `-i` 时照样显示启动菜单。转 PNG 要 `rsvg-convert` 和中文字体，缺了会和 mtr、dig 一样自动装一次；装不了或加了 `--no-install`，就存成 SVG，用浏览器打开。
 
 `-s` 和 `-m` 是文字报告之外的另两种输出，要哪种就加哪个参数。加 `-s` 输出十几行摘要，适合贴在聊天里：
 
 ```bash
-bash splitcheck.sh -s
+bash exitray.sh -s
 ```
 
 ```text
-splitcheck 分流检测 · 2026-11-08 · 地区 tw · 142 个目标
+ExitRay 分流检测 · 2026-11-08 · 地区 tw · 142 个目标
 结论：有分流，3 个出口，其中 1 个不是默认运营商
 逐 IP：2 个目标按 IP 分流
 A 默认  203.0.*.*  AS64500 Example Broadband  TW
@@ -340,19 +340,19 @@ Google：A 3 · C 2
 本地服务：A 9
 明文 DNS 触发：是（触发 4 / 可测 23）
 证据：直接 105 · 推断 37 · 未确认 0
-https://github.com/YePiXpert/splitcheck
+https://github.com/YePiXpert/exitray
 ```
 
 加 `-m` 输出完整的 Markdown 表格，适合贴到论坛：
 
 ```bash
-bash splitcheck.sh -m > report.md
+bash exitray.sh -m > report.md
 ```
 
 带颜色的报告要存下来或翻页看，加 `--color`：
 
 ```bash
-bash splitcheck.sh -y --color | less -R
+bash exitray.sh -y --color | less -R
 ```
 
 > [!WARNING]
@@ -363,7 +363,7 @@ bash splitcheck.sh -y --color | less -R
 在 VPS 上跑，测的是上游这一层。xray、sing-box 可能另有路由规则，比如把 Google 转给另一台机器。这一层要经节点测：
 
 ```bash
-bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
+bash exitray.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 ```
 
 - 经代理时没有路由信息，不回显的目标会显示未知。
@@ -421,7 +421,7 @@ bash splitcheck.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 默认退出码是 0 检测完成、1 运行出错。加 `--exit-code` 后，退出码就是结论：0 无分流，2 有分流、DNS 异常或 IP 拦截，3 证据不足，1 仍然是运行出错。和[结论](#结论)那张表对应。
 
 ```bash
-bash splitcheck.sh -y -j --exit-code > result.json
+bash exitray.sh -y -j --exit-code > result.json
 ```
 
 JSON 里 `split` 只表示有没有发现第二个出口，没发现不等于没有，要看 `verdict`。

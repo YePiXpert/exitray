@@ -23,14 +23,15 @@ def private_path(value):
         return True
     if p.suffix in {'.pem', '.key', '.p12', '.pfx', '.jks', '.keystore', '.mobileprovision', '.db', '.sqlite', '.sqlite3', '.har', '.log'}:
         return True
-    if len(p.parts) == 1 and name.startswith(('report-', 'splitcheck-report', 'diagnostics-')):
+    if len(p.parts) == 1 and name.startswith(('report-', 'exitray-report', 'splitcheck-report', 'diagnostics-')):
         return True
     return False
 
 def self_test():
     for path in ['.env', 'deploy/.env.production', 'private-local/nodes.json', 'reports/out.svg',
                  'backups/family.json', 'device.har', 'data.sqlite', 'key.PEM', 'credentials.json',
-                 'evidence/device/output.txt', 'report-2026.md']:
+                 'evidence/device/output.txt', 'report-2026.md',
+                 'exitray-report-20261108-210638.png', 'splitcheck-report-20261108-210638.svg']:
         assert private_path(path), path
     for path in ['.env.example', 'deploy/.env.production.example', 'README.md', 'package.json',
                  'docs/report-split.svg', 'tests/test_backup.py', 'evidence/README.md']:

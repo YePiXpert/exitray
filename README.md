@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="splitcheck" width="430">
+<img src="docs/logo.svg" alt="ExitRay" width="400">
 
 <p>
 <b>VPS / 家宽出口分流检测</b><br>
 每个目标实际从哪个 IP 出去、是怎么被分的流，一条命令看清楚
 </p>
 
-[![tests](https://github.com/YePiXpert/splitcheck/actions/workflows/test.yml/badge.svg)](https://github.com/YePiXpert/splitcheck/actions/workflows/test.yml)
+[![tests](https://github.com/YePiXpert/exitray/actions/workflows/test.yml/badge.svg)](https://github.com/YePiXpert/exitray/actions/workflows/test.yml)
 ![bash 4+](https://img.shields.io/badge/bash-4%2B-4EAA25?logo=gnubash&logoColor=white)
 [![license MIT](https://img.shields.io/badge/license-MIT-a070f5)](LICENSE)
 
@@ -21,14 +21,14 @@
 
 同一台 VPS、同一条家宽线路，访问不同网站时出口不一定是同一个：上游可能按名单、按明文 DNS 查询、按 IP 段或 TLS 域名，把一部分目标转去别的出口；也可能不换出口，而是劫持 53 端口、屏蔽域名、拦掉某些 IP 段。
 
-splitcheck 把请求钉到目标的 IP 上，让目标自己报出它看到的访问者 IP，拿不到才用路由推断，每条结果都标明证据。内置 13 个分类、一百多个目标：AI、Meta、Telegram、流媒体、虚拟币等，再加上出口所在地区的银行、电商和本地服务。
+ExitRay 把请求钉到目标的 IP 上，让目标自己报出它看到的访问者 IP，拿不到才用路由推断，每条结果都标明证据。内置 13 个分类、一百多个目标：AI、Meta、Telegram、流媒体、虚拟币等，再加上出口所在地区的银行、电商和本地服务。
 
 ## 用法
 
 在要检测的机器上运行，选好检测范围后约 5 分钟出结果：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/splitcheck/main/splitcheck.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh)
 ```
 
 常用参数直接加在命令后面：
