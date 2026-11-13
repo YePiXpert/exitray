@@ -96,7 +96,7 @@
 <text x="557.6" y="183.7" textLength="50.4" lengthAdjust="spacing" fill="#d787ff" font-size="15.4">名单内</text>
 <text x="53.6" y="202.7" textLength="151.2" lengthAdjust="spacing" fill="#d7dae0">graph.facebook.com</text>
 <text x="305.6" y="202.7" textLength="8.4" lengthAdjust="spacing" fill="#ffaf5f" font-weight="700">B</text>
-<text x="372.8" y="202.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787" font-weight="700">A</text>
+<text x="372.8" y="202.7" textLength="8.4" lengthAdjust="spacing" fill="#ffaf5f" font-weight="700">B</text>
 <text x="414.8" y="202.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">直接</text>
 <circle cx="452.60" cy="199.00" r="1.05" fill="#d7dae0"/>
 <text x="456.8" y="202.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0">Meta</text>
@@ -104,7 +104,7 @@
 <text x="574.4" y="202.7" textLength="16.8" lengthAdjust="spacing" fill="#d787ff">IP</text>
 <text x="53.6" y="221.7" textLength="159.6" lengthAdjust="spacing" fill="#d7dae0">static.xx.fbcdn.net</text>
 <text x="305.6" y="221.7" textLength="8.4" lengthAdjust="spacing" fill="#ffaf5f" font-weight="700">B</text>
-<text x="372.8" y="221.7" textLength="8.4" lengthAdjust="spacing" fill="#5fd787" font-weight="700">A</text>
+<text x="372.8" y="221.7" textLength="8.4" lengthAdjust="spacing" fill="#ffaf5f" font-weight="700">B</text>
 <text x="414.8" y="221.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0" font-size="15.4">直接</text>
 <circle cx="452.60" cy="218.00" r="1.05" fill="#d7dae0"/>
 <text x="456.8" y="221.7" textLength="33.6" lengthAdjust="spacing" fill="#d7dae0">Meta</text>

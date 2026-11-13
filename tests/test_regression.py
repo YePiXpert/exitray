@@ -165,6 +165,43 @@ class SpawnTests(unittest.TestCase):
     def test_wait_n_when_the_shell_has_it(self):
         self.check('$(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))')
 
+    def test_retests_run_three_times_as_wide_except_in_low_resource_mode(self):
+        # 复测不跑路由工具，多半在等连不上的 IP 超时，可以多开几路；低压力模式不加。
+        # 加宽只在复测这一步里，出来之后并发数还是原来的
+        work = Path(tempfile.mkdtemp(prefix='exitray-test-'))
+        self.addCleanup(shutil.rmtree, work, True)
+        result = shell(f"""
+            WORK='{posix(work)}'; PROGRESS=$WORK/progress
+            touch "$PROGRESS" "$WORK/exits.tsv" "$WORK/targets.tsv"
+            analyze() {{ printf 'T\\tP\\tai\\ta.example\\t1.1.1.1\\tdead\\n' > "$WORK/once.tsv"; : > "$WORK/unstable.tsv"; }}
+            settle_triggers() {{ :; }}
+            wait_all() {{ :; }}
+            spawn() {{ echo "$PARALLEL $1 $5"; }}
+            PARALLEL=8; run_retest; echo "after $PARALLEL"
+            LOW_RESOURCE=1; PARALLEL=3; run_retest; echo "after $PARALLEL"
+        """)
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout.splitlines(),
+                         ['24 retest_one a.example', 'after 8', '3 retest_one a.example', 'after 3'])
+
+    def test_trigger_test_runs_twice_as_wide_except_in_low_resource_mode(self):
+        # 触发测试只发 DNS 查询和 HTTP 请求，中间还要等名单生效，同样不跑路由工具
+        work = Path(tempfile.mkdtemp(prefix='exitray-test-'))
+        self.addCleanup(shutil.rmtree, work, True)
+        result = shell(f"""
+            WORK='{posix(work)}'
+            touch "$WORK/trigger.tsv"
+            printf 'ai a.example\\n' > "$WORK/targets.txt"
+            dig() {{ :; }}
+            wait_all() {{ :; }}
+            spawn() {{ echo "$PARALLEL $1 $3"; }}
+            PARALLEL=8; run_trigger; echo "after $PARALLEL"
+            LOW_RESOURCE=1; PARALLEL=3; run_trigger; echo "after $PARALLEL"
+        """)
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout.splitlines(),
+                         ['16 trigger_one a.example', 'after 8', '3 trigger_one a.example', 'after 3'])
+
 
 class ArgsTests(unittest.TestCase):
     def run_script(self, *args):
@@ -691,6 +728,75 @@ class AnalyzeTests(unittest.TestCase):
                           ('T', 'P', 'ai', 'g.example', 1, '5.5.5.5', '9.9.9.9', 'google', '-', '-', '-', 'ok')),
                      [('shop', 's.example'), ('ai', 'g.example')])
         self.assertNotEqual(self.json()['targets'][0]['class'], 'byip')
+
+    # 走 9.9.9.9 的线路，和默认出口的线路第一跳就不同
+    B_PATH = '10.0.0.2 5.6.7.8'
+
+    B_TARGETS = [('shop', 's.example'), ('ai', 'g.example'), ('ai', 'h.example')]
+
+    def b_exit(self):
+        """另外两个目标稳定地走 9.9.9.9：这个出口不是只出现过一次的偶发读数。"""
+        return [('T', 'P', 'ai', name, 1, ip, '9.9.9.9', 'google', '-', '-', self.B_PATH, 'ok')
+                for name, ip in (('g.example', '5.5.5.5'), ('h.example', '5.5.6.6'))]
+
+    def test_slow_dns_trigger_is_not_hidden_behind_the_default_exit(self):
+        # 同一个 IP：加密 DNS 下走默认出口，系统 DNS 头一轮还是默认出口，第二轮走了 9.9.9.9，
+        # 上游的名单过了一会儿才生效。两个出口各一次，不能让默认出口占先，也要认作 DNS 触发
+        ok = '10.0.0.1 1.2.3.4'
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'E', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', ok, 'ok'),
+                          ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', ok, 'ok'),
+                          ('T', 'P', 'shop', 's.example', 2, '3.3.3.3', '9.9.9.9', 'cloudflare', '-', '-', self.B_PATH, 'ok'),
+                          *self.b_exit()),
+                     self.B_TARGETS)
+        self.assert_verdict('split')
+        target = self.json()['targets'][0]
+        self.assertEqual(target['system_dns']['exit'], '9.9.9.9')
+        self.assertEqual((target['class'], target['dns_flip']), ('dns', True))
+        text = self.text()
+        self.assertIn('1 个目标由明文 DNS 触发', text)
+        self.assertRegex(text, r's\.example +B 1/2 +A +直接·Cloudflare +DNS触发')
+        self.assertRegex(text, r'电商购物 +1 +B +A\n')
+
+    def test_split_by_ip_across_rounds_shows_the_other_exit(self):
+        # 系统 DNS 两轮测到两个网段，一个走默认出口，一个走 9.9.9.9：一半的读数走了分流，
+        # 概览里这一格画的是 9.9.9.9，不是默认出口
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', '10.0.0.1 1.2.3.4', 'ok'),
+                          ('T', 'P', 'shop', 's.example', 2, '4.4.4.4', '9.9.9.9', 'cloudflare', '-', '-', self.B_PATH, 'ok'),
+                          *self.b_exit()),
+                     self.B_TARGETS)
+        target = self.json()['targets'][0]
+        self.assertEqual((target['class'], target['system_dns']['exit'], target['dns_flip']), ('byip', '9.9.9.9', False))
+        text = self.text()
+        self.assertRegex(text, r's\.example +B 1/2 .*按IP')
+        self.assertRegex(text, r'电商购物 +1 +B\n')
+
+    def test_weak_inference_does_not_outvote_a_confirmed_default_exit(self):
+        # 一轮回显了默认出口；另一轮没有回显，路由在内网段改了道，只能弱推断到 9.9.9.9。
+        # 弱推断压不过确凿的读数，这个目标还是算走默认出口
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', '10.0.0.1 1.2.3.4', 'ok'),
+                          ('T', 'P', 'shop', 's.example', 2, '3.3.3.3', '-', '-', '200', '-', '10.0.0.2 10.9.9.9 5.6.7.8', 'ok'),
+                          *self.b_exit()),
+                     self.B_TARGETS)
+        target = self.json()['targets'][0]
+        self.assertEqual((target['system_dns']['exit'], target['system_dns']['evidence']), ('8.8.8.8', 'direct'))
+        self.assertEqual((target['class'], target['dns_flip']), ('none', False))
+
+    def test_one_round_in_three_on_another_exit_stays_default(self):
+        # 三轮里只有一轮走了 9.9.9.9：多数说了算，照旧算默认出口，备注里写“另”，不标 DNS 触发
+        ok = '10.0.0.1 1.2.3.4'
+        self.analyze(rows(*self.calibration(),
+                          ('T', 'E', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', ok, 'ok'),
+                          ('T', 'P', 'shop', 's.example', 1, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', ok, 'ok'),
+                          ('T', 'P', 'shop', 's.example', 2, '3.3.3.3', '8.8.8.8', 'cloudflare', '-', '-', ok, 'ok'),
+                          ('T', 'P', 'shop', 's.example', 3, '3.3.3.3', '9.9.9.9', 'cloudflare', '-', '-', self.B_PATH, 'ok'),
+                          *self.b_exit()),
+                     self.B_TARGETS)
+        target = self.json()['targets'][0]
+        self.assertEqual((target['system_dns']['exit'], target['class'], target['dns_flip']), ('8.8.8.8', 'none', False))
+        self.assertRegex(self.text(), r's\.example +A 2/3 .*另 B×1')
 
     def split_data(self):
         return rows(*self.calibration(),
@@ -1554,16 +1660,18 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(target['reach'], 'partial')
         self.assertEqual({i['ip']: (i['reachable'], i['connected'], i['attempts']) for i in target['ips']},
                          {'2.2.2.2': (False, 0, 3), '4.4.4.4': (True, 3, 3)})
-        # 当初翻了一次页面；复测只看 TCP，再连两次。同一个目标另一个 IP 也再连两次
-        self.assertEqual(len([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']), 1)
+        # 取回显时连过它的 443 端口，TCP 没连上，就不再去翻页面白等一遍超时；这一次照样算一次尝试
+        self.assertTrue([r for r in self.requests('https://a.example/cdn-cgi/trace') if r['pin'] == '2.2.2.2'])
+        self.assertEqual([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2'], [])
+        # 复测只看 TCP，再连两次。同一个目标另一个 IP 也再连两次
         self.assertEqual(len(self.requests('http://2.2.2.2:443/')), 2)
         self.assertEqual(len(self.requests('http://4.4.4.4:443/')), 2)
 
     def test_one_off_timeout_is_retested_and_not_a_block(self):
-        # 头三个请求（认 CDN、回显、翻页面）都超时，复测时恢复
+        # 头两个请求（认 CDN、取回显）都超时，复测时恢复
         self.state_file('doh', 'a.example 2.2.2.2\n')
         self.state_file('sysdns', 'a.example 4.4.4.4\n')
-        self.state_file('flaky', '2.2.2.2 3\n')
+        self.state_file('flaky', '2.2.2.2 2\n')
         self.state_file('exit_for', 'default 8.8.8.8\n')
         result = self.run_script(*self.common(self.targets('ai a.example\n')), '-j', '--exit-code')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -1613,7 +1721,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(len([r for r in self.requests('https://a.example/') if r['pin'] == '2.2.2.2']), 4)
 
     def test_later_rounds_still_check_that_the_ip_connects(self):
-        # 第 2 轮不翻页面，但要连一次：没试过的 IP 不能当成连得上
+        # 第 2 轮不翻页面，但连没连上照样要记：没试过的 IP 不能当成连得上
         self.state_file('doh', 'a.example 3.3.3.3\n')
         self.state_file('sysdns', 'a.example 2.2.2.2\n')
         self.state_file('silent', '2.2.2.2\n3.3.3.3\n')
@@ -1624,11 +1732,91 @@ class IntegrationTests(unittest.TestCase):
         data = json.loads(result.stdout)
         self.assertEqual(data['verdict'], 'blocked')
         ips = {i['ip']: (i['state'], i['connected'], i['attempts']) for i in data['targets'][0]['ips']}
-        # 2.2.2.2：第 1 轮翻页面、第 2 轮连一次、复测两次，都不通
+        # 2.2.2.2：两轮取回显时各连一次、复测两次，都不通
         self.assertEqual(ips['2.2.2.2'], ('dead', 0, 4))
         self.assertEqual(ips['3.3.3.3'][0], 'ok')
         self.assertEqual(data['targets'][0]['system_dns']['evidence'], 'noconn')
-        self.assertEqual(len(self.requests('http://2.2.2.2:443/')), 3)
+        # 两轮取回显时都连过它的 443 端口、TCP 没连上，不用为了看连通再各连一次；单独连的只有复测那两次
+        self.assertEqual(len([r for r in self.requests('https://a.example/cdn-cgi/trace') if r['pin'] == '2.2.2.2']), 2)
+        self.assertEqual(len(self.requests('http://2.2.2.2:443/')), 2)
+
+    def test_reachable_ip_without_echo_is_still_checked_in_later_rounds(self):
+        # 不回显但连得上的 IP：第 2 轮不翻页面，还是要单独连一次
+        self.state_file('sysdns', 'a.example 2.2.2.2\n')
+        self.state_file('silent', '2.2.2.2\n8.8.4.4\n')
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        result = self.run_script('-c', 'none', '-r', 'none', '-n', '2', '-f', self.targets('ai a.example\n'), '-j')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        ips = {i['ip']: (i['state'], i['connected'], i['attempts']) for i in json.loads(result.stdout)['targets'][0]['ips']}
+        self.assertEqual(ips['2.2.2.2'], ('ok', 2, 2))
+        self.assertEqual(len(self.requests('http://2.2.2.2:443/')), 1)
+
+    def probe_one(self, pass_name):
+        """只跑一次 probe_ip。假的 mtr 最多等 5 秒，看回显的请求有没有在它运行期间发出去。"""
+        self.state_file('exit_for', 'default 8.8.8.8\n')
+        self.stub('mtr', """
+            for i in $(seq 1 25); do
+              if grep -q 'a.example/cdn-cgi/trace' "$STUB_LOG" 2>/dev/null; then echo yes > "$STUB_DIR/echo_seen"; break; fi
+              sleep 0.2
+            done
+            echo '  1.|-- 10.0.0.1 0.0% 2 1 1 1 1 0'
+            echo '  2.|-- 1.2.3.4 0.0% 2 1 1 1 1 0'
+        """)
+        work = posix(self.dir / 'work')
+        result = shell(f"""
+            WORK='{work}'; mkdir -p "$WORK/fp" "$WORK/path" "$WORK/rows.d"; touch "$WORK/page_names"
+            TRACER=mtr-icmp
+            probe_ip {pass_name} ai a.example 1 2.2.2.2
+            rows_merge
+            cat "$WORK/rows.tsv"
+        """, env=self.env())
+        self.assertEqual(result.stderr, '')
+        # 不管谁先谁后，这一行都要既有回显的出口，也有路径
+        self.assertEqual(result.stdout.rstrip('\n').split('\t'),
+                         ['T', pass_name, 'ai', 'a.example', '1', '2.2.2.2', '8.8.8.8', 'cloudflare', '-', '-', '10.0.0.1 1.2.3.4', 'ok'])
+        return (self.state / 'echo_seen').exists()
+
+    def test_encrypted_pass_traces_the_route_while_it_asks_for_the_echo(self):
+        # 加密 DNS 轮没有明文查询，路由和回显同时做：路由工具还在跑，回显的请求已经发出去了
+        self.assertTrue(self.probe_one('E'), '路由探测结束之前没有看到回显的请求')
+
+    def test_system_pass_traces_the_route_before_it_asks_for_the_echo(self):
+        # 系统 DNS 轮刚发过明文查询，上游的名单要过一会儿才生效：先探路由，探完了才取回显
+        self.assertFalse(self.probe_one('P'), '路由探测还没结束，回显的请求就发出去了')
+
+    def test_port_80_that_never_answers_is_remembered_after_two_misses(self):
+        # 认 CDN 的请求隔了一阵又没连上才记下来，之后不再为它等超时。紧挨着的两次不算：
+        # 同一阵抖动会让同时发出的几个请求一起超时。连上过的 IP 照常只问一次
+        self.state_file('dead', '2.2.2.2\n')
+        work = posix(self.dir / 'work')
+        result = shell(f"""
+            WORK='{work}'; mkdir -p "$WORK/fp"
+            ask() {{ fingerprint "$1"; echo; }}
+            ask 2.2.2.2; ask 2.2.2.2
+            SECONDS=$((SECONDS + 30))
+            ask 2.2.2.2; ask 2.2.2.2; ask 2.2.2.2
+            ask 3.3.3.3; ask 3.3.3.3
+        """, env=self.env())
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout.split(), ['none'] * 5 + ['cloudflare'] * 2)
+        # 头两次紧挨着，都问了；过了 30 秒的那一次问完才记下来，后两次不再问
+        self.assertEqual(len(self.requests('http://2.2.2.2/')), 3)
+        self.assertEqual(len(self.requests('http://3.3.3.3/')), 1)
+
+    def test_trigger_test_does_not_ask_a_silent_ip_again_for_every_subnet(self):
+        # 四个外地子网问到的都是同一个 IP，它又不回显：问一次就够了，结果不会变
+        self.state_file('silent', '8.8.4.4\n')
+        work = posix(self.dir / 'work')
+        result = shell(f"""
+            WORK='{work}'; mkdir -p "$WORK/fp"; touch "$WORK/trigger.tsv"
+            trigger_one ai a.example
+            cat "$WORK/trigger.tsv"
+        """, env=self.env())
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(result.stdout, 'ai\ta.example\t-\t-\t-\tnoecho\n')
+        lookups = [l for l in self.log.read_text().splitlines() if l.startswith('https://dns.google/resolve?name=a.example')]
+        self.assertEqual(len(lookups), 4)
+        self.assertEqual(len(self.requests('https://a.example/cdn-cgi/trace')), 1)
 
     def test_rotating_exit_pool_is_not_a_split(self):
         # 每次回显轮流报两个出口：同一个目标连问几次就看得出来，合成一个默认出口

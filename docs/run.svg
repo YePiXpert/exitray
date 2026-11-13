@@ -39,7 +39,7 @@
 <path d="M234.20,67.00L234.20,76.50L238.40,76.50" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
 <path d="M238.40,76.50L246.80,76.50M242.60,76.50L242.60,86.00" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
 <path d="M251.00,67.00L251.00,76.50L246.80,76.50" fill="none" stroke="#af87ff" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
-<text x="280.4" y="80.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">v2.3.0</text>
+<text x="280.4" y="80.7" textLength="50.4" lengthAdjust="spacing" fill="#8a8a8a">v2.4.0</text>
 <path d="M41.00,86.00L41.00,95.50L45.20,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
 <path d="M45.20,95.50L53.60,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>
 <path d="M57.80,86.00L57.80,95.50L53.60,95.50" fill="none" stroke="#00d7d7" stroke-width="1.15" stroke-linecap="square" stroke-linejoin="round"/>

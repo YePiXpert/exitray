@@ -30,7 +30,7 @@ set -u
 set -f # 路径里的 ? 不能被当成通配符
 export LC_ALL=C
 
-VERSION="2.3.0"
+VERSION="2.4.0"
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 CATEGORIES='ai meta telegram social google stream finance crypto bank shop dev game local'
 
@@ -78,6 +78,10 @@ HOST_SNIFF=0
 PG_CODE=000
 PG_CANDS=-
 PG_REACH=dead
+# 放到后台的路由探测：进程号、它写结果的文件，和结束后读到的路径
+ROUTE_PID=""
+ROUTE_FILE=""
+ROUTE_PATH=""
 RUNNING=0
 PROGRESS=/dev/null
 MAX_IPS=3
@@ -1050,11 +1054,29 @@ route_of() {
   printf '%s\n' "$p"
 }
 
+# 把路由探测放到后台，好和取回显同时进行：两件事互不相干，一个 IP 的用时从两者之和降到较长的那个。
+# 参数和 route_of 一样。之后用 route_wait 等它结束，路径在 ROUTE_PATH 里
+route_start() {
+  ROUTE_PID='' ROUTE_PATH=''
+  (( USE_ROUTE )) && [[ $TRACER != none ]] || return 0
+  # 文件名先在这里算好：写在后台命令或命令替换里的 $BASHPID 是那个子进程自己的
+  ROUTE_FILE="$WORK/r.$BASHPID"
+  route_of "$1" "$2" > "$ROUTE_FILE" &
+  ROUTE_PID=$!
+}
+
+route_wait() {
+  [[ -n $ROUTE_PID ]] || return 0
+  wait "$ROUTE_PID"
+  IFS= read -r ROUTE_PATH < "$ROUTE_FILE" || true
+  ROUTE_PID=''
+}
+
 # ---------- 回显 ----------
 
 # 用一次明文 HTTP 请求判断这个 IP 属于哪家 CDN
 fingerprint() {
-  local ip=$1 cache="$WORK/fp/$1" tmp body kind=other
+  local ip=$1 cache="$WORK/fp/$1" tmp body kind=other since=0
   if [[ -s $cache ]]; then
     cat "$cache"
     return 0
@@ -1082,14 +1104,25 @@ fingerprint() {
     kind=google
   fi
   rm -f "$tmp"
-  # 没连上可能只是这一次超时。不记下来，下次探测再认，免得这个 IP 整场都拿不到回显
-  [[ $kind == none ]] || printf '%s' "$kind" > "$cache"
+  # 没连上可能只是这一次超时，先不下结论，下次探测再认，免得这个 IP 整场都拿不到回显。
+  # 隔了 20 秒以上又没连上才记下来：80 端口不通的 IP 每问一次要等好几秒，后面几轮不再为它等。
+  # 要隔开，是因为同一阵抖动会让同时发出的几个请求一起超时，那只能算一次
+  if [[ $kind != none ]]; then
+    printf '%s' "$kind" > "$cache"
+  elif [[ -s $cache.miss ]]; then
+    read -r since < "$cache.miss" || true
+    (( SECONDS - ${since:-0} < 20 )) || printf none > "$cache"
+  else
+    printf '%s\n' "$SECONDS" > "$cache.miss"
+  fi
   printf '%s' "$kind"
 }
 
-# 输出“出口 方法”，拿不到就不输出
+# 输出“出口 方法”，拿不到就不输出。调用方设了 NOCONN（一个文件名）时顺带记一件事：
+# 这一次连目标的 443 端口，是不是连 TCP 都没连上。没连上文件里有内容，否则是空的
 echo_by_ip() {
-  local name=$1 ip=$2 kind ex='' m=''
+  local name=$1 ip=$2 kind ex='' m='' tmp t
+  [[ -z ${NOCONN:-} ]] || : > "$NOCONN"
   # 经代理时用主机名，让节点按自己的 DNS 配置解析
   if [[ -n $PROXY ]]; then
     case $name in
@@ -1124,7 +1157,15 @@ echo_by_ip() {
         m=meta ;;
       *)
         # 80 端口不通或经 HTTP 代理时认不出 CDN，再试一次 Cloudflare 的回显路径
-        is_ipv4 "$name" || ex=$(HTTP_TIMEOUT=5 fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" | extract trace)
+        if ! is_ipv4 "$name"; then
+          tmp="$WORK/e.$BASHPID"
+          : > "$tmp"
+          t=$(HTTP_TIMEOUT=5 fetch_own "$name" "$ip" "https://$name/cdn-cgi/trace" -o "$tmp" -w '%{time_connect}')
+          ex=$(extract trace < "$tmp")
+          rm -f "$tmp"
+          # 经代理时看到的是到代理的连接，说明不了目标连不连得上
+          [[ $t =~ [1-9] || -n $PROXY || -z ${NOCONN:-} ]] || echo dead > "$NOCONN"
+        fi
         m=cloudflare ;;
     esac
   fi
@@ -1194,6 +1235,7 @@ probe_calibration() {
   if [[ $ip == - ]]; then
     ex=$(http "$url" | head -c 400000 | extract "$method")
   else
+    route_start "$ip" cal
     # 回显页的源站在某些地区可能躲在别家 CDN 后面，这时看到的是 CDN 的 IP，不能算数
     case $method in
       akamai|fastly|cloudfront|meta) want=$method ;;
@@ -1202,7 +1244,8 @@ probe_calibration() {
     if [[ -z $want || $(fingerprint "$ip") == "$want" ]]; then
       ex=$(pinned "$host" "$ip" "$url" | head -c 400000 | extract "$method")
     fi
-    path=$(route_of "$ip" cal)
+    route_wait
+    path=$ROUTE_PATH
   fi
   emit C E cal "$host" "$round" "$ip" "${ex:--}" "$method" - - "${path:--}"
 }
@@ -1325,19 +1368,36 @@ page_fetch() {
 # 换出口的复测也用它，轮次写成 r1、r2
 probe_ip() {
   local pass=$1 group=$2 name=$3 round=$4 ip=$5 path out ex='-' method='-' code='-' cands='-' reach='-'
-  path=$(route_of "$ip" "$pass$round")
+  local NOCONN="$WORK/n.$BASHPID"
+  # 加密 DNS 这一轮没有明文查询，路由和回显谁先谁后都一样，同时做。系统 DNS 那一轮照旧先探路由：
+  # 刚发过明文查询，上游的名单要过一会儿才生效，探路由的这一两秒正好让出来，回显才看得到生效后的出口
+  if [[ $pass == E ]]; then
+    route_start "$ip" "$pass$round"
+  else
+    path=$(route_of "$ip" "$pass$round")
+  fi
   out=$(echo_by_ip "$name" "$ip")
   if [[ -n $out ]]; then
     ex=${out% *}
     method=${out#* }
     reach=ok
   elif ! is_ipv4 "$name" && { [[ $round == 1 || $round == r* ]] || grep -qxF "$name" "$WORK/page_names" 2>/dev/null; }; then
-    # 没有回显就翻页面。后面几轮只翻第一轮证明有用的目标，省流量；复测要看连不连得上，也翻
-    page_fetch "$pass" "$name" "$ip"
-    code=$PG_CODE cands=$PG_CANDS reach=$PG_REACH
+    if [[ -s $NOCONN ]]; then
+      # 刚才取回显时连它的 443 端口，TCP 就没连上，页面也翻不了，不用再等一遍超时。
+      # 记成连不上，算不算数由复测决定
+      code=000 reach=dead
+    else
+      # 没有回显就翻页面。后面几轮只翻第一轮证明有用的目标，省流量；复测要看连不连得上，也翻
+      page_fetch "$pass" "$name" "$ip"
+      code=$PG_CODE cands=$PG_CANDS reach=$PG_REACH
+    fi
   elif [[ -z $PROXY ]]; then
     # IP 目标没有页面可翻；后面几轮不翻页面的域名也照样连一次。没试过的 IP 不能当成连得上
-    if tcp_open "$ip" 443; then reach=tcp; else reach=dead; fi
+    if [[ ! -s $NOCONN ]] && tcp_open "$ip" 443; then reach=tcp; else reach=dead; fi
+  fi
+  if [[ $pass == E ]]; then
+    route_wait
+    path=$ROUTE_PATH
   fi
   emit T "$pass" "$group" "$name" "$round" "$ip" "$ex" "$method" "${code:-000}" "${cands:--}" "${path:--}" "$reach"
 }
@@ -1376,13 +1436,16 @@ run_pass() {
 # 测不了的记下卡在哪一步：nofar 拿不到外地节点的 IP，noecho 那个 IP 不回显，
 # mismatch 明文应答里没有那个 IP（53 端口被劫持时，应答是劫持方按自己的位置给的）
 trigger_one() {
-  local group=$1 name=$2 sub ip out before after m answers why=nofar
+  local group=$1 name=$2 sub ip out before after m answers why=nofar silent=' '
   for sub in $FAR_SUBNETS; do
     ip=$(doh "$name" "$sub" | head -1)
     [[ -n $ip ]] || continue
+    # 这个 IP 刚才就没给回显，换一个外地子网问到的还是它：结果不会变，不用再等一遍
+    [[ $silent != *" $ip "* ]] || continue
     out=$(echo_by_ip "$name" "$ip")
     if [[ -z $out ]]; then
       [[ $why == mismatch ]] || why=noecho
+      silent+="$ip "
       continue
     fi
     before=${out% *}
@@ -1417,6 +1480,9 @@ run_trigger() {
     return 0
   fi
   local group name
+  # 这一步只发 DNS 查询和 HTTP 请求，中间还要等名单生效，不跑路由工具，可以多开一倍。低压力模式照旧
+  local PARALLEL=$PARALLEL
+  (( LOW_RESOURCE )) || PARALLEL=$(( PARALLEL * 2 ))
   awk '$2 !~ /^[0-9.]+$/ && c[$1]++ < 3' "$WORK/targets.txt" > "$WORK/samples.txt"
   step_begin "明文 DNS 触发测试" "$(ui_lines "$WORK/samples.txt")" "$WORK/trigger.tsv"
   while read -r group name; do
@@ -1500,6 +1566,10 @@ run_retest() {
   sort -u "$WORK/once.tsv" > "$WORK/retest.txt"
   [[ -s $WORK/retest.txt ]] || return 0
   count=$(ui_lines "$WORK/retest.txt")
+  # 复测沿用之前探到的路径，不再跑路由工具，时间多半花在等连不上的 IP 超时，多开几路不会给路由器
+  # 添负担。低压力模式照旧
+  local PARALLEL=$PARALLEL
+  (( LOW_RESOURCE )) || PARALLEL=$(( PARALLEL * 3 ))
   step_begin "复测偶发的读数" "$count" "$PROGRESS"
   while IFS=$'\t' read -r kind pass group name ip why; do
     STEP_DETAIL=$name
@@ -1594,17 +1664,33 @@ run_sniff() {
 dns_query_exits() {
   [[ -z $PROXY ]] || return 0
   command -v dig >/dev/null 2>&1 || return 0
-  local a b c
-  a=$(dig +short +time=2 +tries=1 TXT whoami.cloudflare CH @1.1.1.1 2>/dev/null | tr -d '"' | head -1)
-  b=$(dig +short +time=2 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net 2>/dev/null | head -1)
-  c=$(dig +short +time=2 +tries=1 TXT o-o.myaddr.l.google.com @8.8.8.8 2>/dev/null | grep -oE 'edns0-client-subnet [0-9./]+' | awk '{ print $2 }' | head -1)
+  local a b c dir="$WORK/dnsq.d"
+  mkdir -p "$dir"
+  # 四个查询互不相干，同时发。192.0.2.53 是保留地址，不存在 DNS 服务：没被劫持时那一个总要等到超时，
+  # 一个一个发，这一步至少白等两秒
+  dig +short +time=2 +tries=1 TXT whoami.cloudflare CH @1.1.1.1 > "$dir/cf" 2>/dev/null &
+  dig +short +time=2 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net > "$dir/akamai" 2>/dev/null &
+  dig +short +time=2 +tries=1 TXT o-o.myaddr.l.google.com @8.8.8.8 > "$dir/google" 2>/dev/null &
+  dig +short +time=2 +tries=1 example.com A @192.0.2.53 > "$dir/reserved" 2>/dev/null &
+  wait
+  a=$(tr -d '"' < "$dir/cf" | head -1)
+  b=$(head -1 "$dir/akamai")
+  c=$(grep -oE 'edns0-client-subnet [0-9./]+' "$dir/google" | awk '{ print $2 }' | head -1)
   # 超时的时候 dig +short 会把 “;; connection timed out” 这种提示写到 stdout
   is_ipv4 "$a" || a=''
   is_ipv4 "$b" || b=''
   printf 'Cloudflare\t%s\nAkamai\t%s\nGoogle\t%s\n' "${a:--}" "${b:--}" "${c:--}" > "$WORK/dnsq.tsv"
-  # 192.0.2.53 是保留地址，不存在 DNS 服务。能收到应答，说明 53 端口被中途拦截了
-  a=$(dig +short +time=2 +tries=1 example.com A @192.0.2.53 2>/dev/null | grep -E '^[0-9.]+$' | head -1)
+  # 发给保留地址的查询能收到应答，说明 53 端口被中途拦截了
+  a=$(grep -E '^[0-9.]+$' "$dir/reserved" | head -1)
   printf 'dns_hijack\t%s\n' "$([[ -n $a ]] && echo 1 || echo 0)" >> "$WORK/env.tsv"
+}
+
+# 本机的 IPv6 出口，没有就输出 -
+ipv6_exit() {
+  local v
+  v=$(curl -6 -s --connect-timeout 3 --max-time 5 https://api64.ipify.org 2>/dev/null | tr -d ' \r\n' | head -c 45)
+  [[ $v == *:* ]] || v='-'
+  printf '%s\n' "$v"
 }
 
 env_info() {
@@ -1626,8 +1712,10 @@ env_info() {
     v=$(awk '/^nameserver/ { print $2 }' /etc/resolv.conf | head -2 | paste -sd' ' -)
     printf 'resolver\t%s\n' "${v:--}" >> "$WORK/env.tsv"
   fi
-  v=$(curl -6 -s --connect-timeout 3 --max-time 5 https://api64.ipify.org 2>/dev/null | tr -d ' \r\n' | head -c 45)
-  [[ $v == *:* ]] || v='-'
+  # main 已经在后台问过了，结果在 ipv6.txt 里；单独调用时现问
+  v=''
+  [[ ! -s $WORK/ipv6.txt ]] || IFS= read -r v < "$WORK/ipv6.txt" || true
+  [[ -n $v ]] || v=$(ipv6_exit)
   printf 'ipv6\t%s\n' "$v" >> "$WORK/env.tsv"
   if command -v ip >/dev/null 2>&1; then
     local defaults rules tunnels
@@ -1857,10 +1945,14 @@ function hops(p, f, l, a, na, i, s) {
 function summarize(key, p, j, e, c, best, top) {
   S_L = "-"; S_X = "-"; S_E = "-"; S_M = "-"; S_A = 0; S_T = TOT[key, p] + 0; S_O = "-"
   if (S_T == 0) return
-  S_L = "?"; best = 0
+  S_L = "?"; best = 0; top = ""
   for (j = 1; j <= nx; j++) {
     e = ORDER[j]; c = CNT[key, p, e] + 0
-    if (c > best) { best = c; top = e; S_L = substr(LET, j, 1) }
+    # 取读数最多的出口。次数一样多时不让默认出口占先：有一半的读数确凿地走了别的出口（回显或
+    # 推断，弱推断不算），这个目标就是会被分流的，画成默认出口等于把它藏了起来
+    if (c > best || (c == best && c > 0 && top == DEF && (((key, p, e) in DIR) || ((key, p, e) in INFD)))) {
+      best = c; top = e; S_L = substr(LET, j, 1)
+    }
   }
   if (best > 0) {
     S_X = top; S_A = best
@@ -2114,6 +2206,8 @@ END {
     kp = k3 SUBSEP PS[i]
     if (!(kp in IPX)) IPX[kp] = EX[i]
     else if (IPX[kp] != EX[i]) IPX[kp] = "*"
+    # 这个 IP 在这种解析方式下走过非默认出口，哪怕只有一轮
+    if (EX[i] != DEF) IPND[kp] = 1
   }
   for (kp in IPX) {
     if (IPX[kp] == "*") continue
@@ -2121,9 +2215,14 @@ END {
     kq = q[1] SUBSEP q[2] SUBSEP q[4]
     if (!(kq in FIRSTX)) FIRSTX[kq] = IPX[kp]
     else if (FIRSTX[kq] != IPX[kp]) BYIP[q[1], q[2]] = 1
-    # 同一个 IP：加密 DNS 下走默认出口，明文查询之后换了出口，这才是确凿的 DNS 触发
+  }
+  # 同一个 IP：加密 DNS 下走默认出口，明文查询之后换了出口，这才是确凿的 DNS 触发。上游的名单
+  # 可能过一会儿才生效，系统 DNS 的头一轮还走默认出口、后一轮才换，也算
+  for (kp in IPND) {
+    split(kp, q, SUBSEP)
+    if (q[4] != "P") continue
     ek = q[1] SUBSEP q[2] SUBSEP q[3] SUBSEP "E"
-    if (q[4] == "P" && IPX[kp] != DEF && (ek in IPX) && IPX[ek] == DEF) FLIP[q[1], q[2]] = 1
+    if ((ek in IPX) && IPX[ek] == DEF) FLIP[q[1], q[2]] = 1
   }
 
   # 按目标汇总。复测的行只用来判断出口算不算数，不算目标的轮次
@@ -2176,8 +2275,9 @@ END {
     # 第 20 列是确凿的 DNS 触发，第 21 到 24 列是连不上且改道、连得上但改道、握手不成、不稳定的 IP 数，
     # 第 25 列是换了 SNI 之后走的出口，没变是 -
     rc = reach(key)
+    # DNS 触发只标在系统 DNS 下确实走了非默认出口的目标上：三轮里只有一轮换过出口的，照旧只在备注里写“另”
     print TC[t2], TN[t2], pl, px, pe, pm, pa, pt, po, el, ex, ee, em, cls, IPC[key] + 0, (key in CODE ? CODE[key] : "-"), rc, IP_MAP, \
-      ((key in BYIP) ? 1 : 0), ((key in FLIP) ? 1 : 0), R_DD, R_DL, R_TLS, R_FLAKY, ((key in SNIL) ? SNIL[key] : "-") > f
+      ((key in BYIP) ? 1 : 0), (((key in FLIP) && px != DEF) ? 1 : 0), R_DD, R_DL, R_TLS, R_FLAKY, ((key in SNIL) ? SNIL[key] : "-") > f
   }
 
   # 每个出口最常见的路径前段，用来显示分叉点
@@ -3750,10 +3850,12 @@ main() {
   run_sniff
   run_retest
   step_begin "收集环境信息"
+  # 查询来源和 IPv6 这两项多半是在等超时，放到后台，和下面的稳定性检查同时做
+  dns_query_exits &
+  [[ -n $PROXY ]] || ipv6_exit > "$WORK/ipv6.txt" &
   # 结束前再问几次基线回显：检测期间出口 IP 换了，前后两轮的对比就不能当成分流
   stability_check e 3
-  rows_merge
-  dns_query_exits
+  wait_all
   env_info
   analyze
   settle_triggers
