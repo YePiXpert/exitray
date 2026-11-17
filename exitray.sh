@@ -877,10 +877,10 @@ fetch_own() {
 }
 
 is_ipv4() {
-  [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
-  local a b c d octet
-  IFS=. read -r a b c d <<<"$1"
-  for octet in "$a" "$b" "$c" "$d"; do
+  [[ $1 =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] || return 1
+  local octet
+  # 直接取捕获组，避免 bash 4.2 在嵌套 read / 管道中恢复临时 IFS 时影响拆分。
+  for octet in "${BASH_REMATCH[@]:1}"; do
     # 前导 0 在不同工具里可能当成八进制，不能作为同一个 IP 的另一种写法。
     [[ $octet == 0 || $octet != 0* ]] && (( octet <= 255 )) || return 1
   done
@@ -889,8 +889,8 @@ is_ipv4() {
 
 is_public_ipv4() {
   is_ipv4 "$1" || return 1
-  local a b rest
-  IFS=. read -r a b rest <<<"$1"
+  local a=${1%%.*} rest=${1#*.} b
+  b=${rest%%.*}
   case $a in
     0|10|127) return 1 ;;
     169) [[ $b != 254 ]] || return 1 ;;

@@ -92,6 +92,29 @@ class AddressValidationTests(unittest.TestCase):
                 self.assertEqual(shell('extract plain', body).stdout, '')
         self.assertEqual(shell('extract youtube', '{"remoteHost":"1.2.3.4.5"}').stdout, '')
 
+    def test_nested_address_filters_do_not_depend_on_read_ifs(self):
+        # 加密轮会把两家 DoH 的过滤结果再次过滤；旧 bash 对临时 IFS 的恢复不能污染内层校验。
+        result = shell('''
+            public_lines() {
+                local value
+                while IFS= read -r value; do
+                    is_public_ipv4 "$value" && printf '%s\\n' "$value"
+                done
+            }
+            IFS=:
+            for attempt in 1 2; do
+                mapfile -t addresses < <({
+                    printf '%s\\n' 2.2.2.2 2.2.2.2 10.0.0.1 8.008.8.8 | ipv4_lines
+                    printf '%s\\n' 9.9.9.9 172.16.1.1 172.32.1.1 | ipv4_lines
+                } | ipv4_lines | public_lines)
+                printf '%s\\n' "${addresses[@]}"
+            done
+            [[ $IFS == : ]]
+        ''')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '2.2.2.2\n9.9.9.9\n172.32.1.1\n' * 2)
+        self.assertEqual(result.stderr, '')
+
 
 class DnsFallbackTests(unittest.TestCase):
     def test_doh_uses_fallback_if_google_has_no_valid_addresses(self):
