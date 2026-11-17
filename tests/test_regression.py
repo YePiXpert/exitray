@@ -280,7 +280,7 @@ class OldNameTests(unittest.TestCase):
         result = self.run_old(root / 'splitcheck.sh', '-c', 'ai', '-y', **env)
         self.assertEqual((result.returncode, result.stdout), (7, 'ran:-c ai -y\n'), result.stderr)
         self.assertEqual((root / 'curl.log').read_text().strip(),
-                         '-fsSL https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh')
+                         '-q -fsSL --connect-timeout 10 --max-time 60 https://raw.githubusercontent.com/YePiXpert/exitray/main/exitray.sh')
 
     def test_failed_download_is_an_error(self):
         # 下载失败，或者下载到的是空的：报错退出，不能什么都不说就结束

@@ -375,6 +375,8 @@ bash exitray.sh -y --color | less -R
 bash exitray.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 ```
 
+探测请求只使用 `-x` 指定的代理；不加 `-x` 就直连。脚本忽略 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`（及其小写形式）和用户的 `.curlrc`，避免它们悄悄改变检测路径。
+
 - 经代理时没有路由信息，不回显的目标会显示未知。
 - SOCKS 代理下照样做 SNI 嗅探。节点按域名分流、又不改写目的地时（sing-box 默认如此，xray 要开 `routeOnly`），每个域名走哪个出口都有直接证据；节点会改写目的地时，报告会写“连接被按 TLS 域名转去了别处”。
 - HTTP 代理钉不住 IP，SNI 嗅探这一项不测。
@@ -394,12 +396,14 @@ bash exitray.sh -x socks5h://127.0.0.1:1080 -c ai,meta
 - 分类：`ai` `meta` `telegram` `social` `google` `stream` `finance` `crypto` `bank` `shop` `dev` `game` `local`
 - 地区：`auto` 按出口所在的国家选，也可以指定 `tw` `jp` `hk` `us` `sg` `kr` `vn`，`none` 是不加地区清单
 
+目标文件支持 UTF-8 BOM、Windows 换行和以 `#` 开头的注释行。域名会转为小写后去重，同一目标只保留第一次出现的分类，避免重复探测。
+
 **怎么测**
 
 | 选项 | 作用 |
 |---|---|
-| `-n`, `--rounds N` | 系统 DNS 测几轮，默认 2 |
-| `-p`, `--parallel N` | 并发数，默认 8 |
+| `-n`, `--rounds N` | 系统 DNS 测几轮，1–100，默认 2 |
+| `-p`, `--parallel N` | 并发数，1–256，默认 8 |
 | `-L`, `--low-resource` | 低压力模式：按 CPU 核数把并发降到 2-4，路由探测降低优先级 |
 | `-x`, `--proxy URL` | 经代理测，用来检查节点本身的分流 |
 | `--tracer 工具` | 指定路由工具：`mtr-icmp` `mtr-tcp` `traceroute-tcp` `traceroute` `tracepath` |
@@ -469,10 +473,10 @@ SNI 嗅探会把目标域名放进发给 `ipinfo.io` 的 TLS 握手。代理地�
 
 ## 开发
 
-测试不联网，用假的 curl、mtr、dig 跑真实的脚本函数和完整流程。Python 只用于测试，运行脚本不需要：
+测试不访问外网，用假的 curl、mtr、dig 跑真实的脚本函数和完整流程；代理隔离测试用真实 curl 访问本机 HTTP 服务。Python 只用于测试，运行脚本不需要：
 
 ```bash
-python3 tests/test_regression.py
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 只跑一组或一个测试：

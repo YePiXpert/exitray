@@ -5,27 +5,35 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   linux:
     # ubuntu-latest 已是 Ubuntu 26.04，coreutils 默认换成了 Rust 写的 uutils，行为和 GNU 不完全一样
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        awk: [gawk, mawk, 'busybox awk']
     steps:
       - uses: actions/checkout@v4
       # librsvg2-bin 和中文字体给 -i 转 PNG 用，测试会检查真的转出了 PNG
       - run: sudo apt-get update -qq && sudo apt-get install -y gawk mawk busybox librsvg2-bin fonts-wqy-microhei
       - run: bash -n exitray.sh && bash -n splitcheck.sh
-      - name: gawk
-        run: TEST_AWK=gawk python3 tests/test_regression.py
-      - name: mawk
-        run: TEST_AWK=mawk python3 tests/test_regression.py
-      - name: BusyBox awk
-        run: TEST_AWK='busybox awk' python3 tests/test_regression.py
+      - name: Regression tests (${{ matrix.awk }})
+        env:
+          TEST_AWK: ${{ matrix.awk }}
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Docs images
+        if: matrix.awk == 'gawk'
         # 配图和 README、docs/guide.md 里的文本样例要跟脚本现在的输出一致；不一致就运行 docs/tools/build.py 重新生成
         run: TEST_AWK=gawk python3 docs/tools/build.py --check
   bash-4-2:
     # 没有 wait -n 的旧 bash，走轮询空位那条路
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Build bash 4.2
@@ -38,12 +46,13 @@ jobs:
           cd /tmp/bash-4.2
           CC='gcc -std=gnu89 -fcommon -fpermissive' CFLAGS='-O2' ./configure --without-bash-malloc >/dev/null
           make -j2 >/dev/null
-      - run: TEST_BASH=/tmp/bash-4.2/bash python3 tests/test_regression.py
+      - run: TEST_BASH=/tmp/bash-4.2/bash python3 -m unittest discover -s tests -p 'test_*.py'
   alpine:
     # 不装 coreutils，cat、ps、timeout 这些用的都是 BusyBox 的
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     container: alpine:3.22
     steps:
-      - run: apk add --no-cache bash python3
+      - run: apk add --no-cache bash curl python3
       - uses: actions/checkout@v4
-      - run: bash -n exitray.sh && bash -n splitcheck.sh && python3 tests/test_regression.py
+      - run: bash -n exitray.sh && bash -n splitcheck.sh && python3 -m unittest discover -s tests -p 'test_*.py'

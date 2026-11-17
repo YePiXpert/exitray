@@ -47,9 +47,11 @@ def main():
         print('Privacy path checks: self-test passed.')
         return 0
     cmd = ['git', '-C', str(ROOT)]
-    cmd += ['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'] if args.staged else ['ls-files', '-z']
+    cmd += ['diff', '--cached', '--name-only', '--diff-filter=ACMRT', '-z'] if args.staged else ['ls-files', '-z']
     paths = subprocess.check_output(cmd).decode('utf-8').split('\0')
-    bad = [p for p in paths if p and (args.staged or (ROOT / p).exists()) and private_path(p)]
+    # 检查 Git 将要提交的路径：从工作树删除但尚未暂存删除的文件仍在索引里，
+    # 断开的符号链接也属于已跟踪内容，不能用 exists() 把它们跳过。
+    bad = [p for p in paths if p and private_path(p)]
     if bad:
         print('Private files must stay outside the public repository:', file=sys.stderr)
         for path in bad:

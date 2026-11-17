@@ -31,8 +31,8 @@ while (( $# )); do
     -L) follow=1; shift ;;
     -i) include=1; shift ;;
     -k|-sk) insecure=1; shift ;;
-    -s|-I) shift ;;
-    --connect-timeout|--max-time|-A|--max-redirs|-x) shift 2 ;;
+    -q|-s|-I) shift ;;
+    --connect-timeout|--max-time|-A|--max-redirs|-x|--noproxy) shift 2 ;;
     --resolve) pin=${2##*:}; shift 2 ;;
     --connect-to) connect=$2; shift 2 ;;
     -H) case $2 in Host:*|host:*) host_header=${2#*: } ;; esac; shift 2 ;;
