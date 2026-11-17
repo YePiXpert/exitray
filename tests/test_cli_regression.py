@@ -29,7 +29,12 @@ class ArgumentBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             result = regression.shell(f"parse_args -f '{regression.posix(directory)}'")
             self.assertEqual(result.returncode, 1)
-            self.assertIn('普通文件', result.stderr)
+            self.assertIn('不能是目录', result.stderr)
+
+    def test_accepts_process_substitution_as_target_file(self):
+        result = regression.shell("parse_args -f <(printf '%s\\n' 'ai a.example'); echo accepted")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, 'accepted\n')
 
     def test_rejects_malformed_extra_targets_early(self):
         for value in ('missing-colon', ':a.example', 'ai:', 'ai:-evil',

@@ -664,7 +664,7 @@ parse_args() {
   # 先限制长度再做算术，超长数字会在 bash 中溢出成零或负数。
   [[ $ROUNDS =~ ^[1-9][0-9]{0,2}$ ]] && (( ROUNDS <= 100 )) || die "--rounds 必须是 1-100 的整数"
   [[ $PARALLEL =~ ^[1-9][0-9]{0,2}$ ]] && (( PARALLEL <= 256 )) || die "--parallel 必须是 1-256 的整数"
-  [[ -z $TARGET_FILE || ( -f $TARGET_FILE && -r $TARGET_FILE ) ]] || die "读不了普通文件 $TARGET_FILE"
+  [[ -z $TARGET_FILE || ( -r $TARGET_FILE && ! -d $TARGET_FILE ) ]] || die "读不了文件 $TARGET_FILE（必须可读且不能是目录）"
   # 在安装依赖、发网络请求之前拒绝格式错误的追加参数。
   for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
     [[ $e =~ ^[^[:space:][:cntrl:]:]+:[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "-a 的格式是 分类:域名，收到 $e"
