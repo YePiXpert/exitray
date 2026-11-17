@@ -106,8 +106,8 @@ usage() {
   -r, --region 地区     本地银行和电商清单：auto（默认，按出口国家）tw jp hk us sg kr vn none
   -a, --add 分类:域名   追加目标，可重复，例如 -a shop:www.pchome.com.tw
   -f, --file 文件       从文件读目标，每行“分类 域名”
-  -n, --rounds N        系统 DNS 测几轮，默认 2
-  -p, --parallel N      并发数，默认 8
+  -n, --rounds N        系统 DNS 测几轮，1-100，默认 2
+  -p, --parallel N      并发数，1-256，默认 8
   -L, --low-resource    低压力模式：按 CPU 核数把并发降到 2-4，路由探测降低优先级
   -x, --proxy URL       经代理测，用来检查节点本身的分流，例如 socks5h://127.0.0.1:1080
       --tracer 工具     指定路由工具：mtr-icmp mtr-tcp traceroute-tcp traceroute tracepath
@@ -121,7 +121,7 @@ usage() {
   -m, --markdown        输出方便分享的 Markdown 报告，IP 默认打码，可重定向到文件
   -s, --summary         只输出十几行可直接复制的摘要，IP 默认打码
   -i, --image           另存一张概览图片（PNG，IP 默认打码），方便发给别人
-      --no-mask         -s 和 -m 的输出里显示完整 IP
+      --no-mask         -i、-s 和 -m 的输出里显示完整 IP
       --exit-code       用退出码表示结论，方便 cron 和监控（见下）
   -y, --yes             不显示启动菜单，直接测全部分类
       --color           输出不是终端时也用颜色，例如接 less -R 或 tee
@@ -629,7 +629,7 @@ need_arg() {
 }
 
 parse_args() {
-  local c
+  local c e
   while (( $# )); do
     case $1 in
       -c|--category) need_arg "$1" $#; CATS=$2; shift 2 ;;
@@ -661,9 +661,14 @@ parse_args() {
       *) die "未知选项 $1，用 --help 查看用法" ;;
     esac
   done
-  [[ $ROUNDS =~ ^[1-9][0-9]*$ ]] || die "--rounds 必须是正整数"
-  [[ $PARALLEL =~ ^[1-9][0-9]*$ ]] || die "--parallel 必须是正整数"
-  [[ -z $TARGET_FILE || -r $TARGET_FILE ]] || die "读不了文件 $TARGET_FILE"
+  # 先限制长度再做算术，超长数字会在 bash 中溢出成零或负数。
+  [[ $ROUNDS =~ ^[1-9][0-9]{0,2}$ ]] && (( ROUNDS <= 100 )) || die "--rounds 必须是 1-100 的整数"
+  [[ $PARALLEL =~ ^[1-9][0-9]{0,2}$ ]] && (( PARALLEL <= 256 )) || die "--parallel 必须是 1-256 的整数"
+  [[ -z $TARGET_FILE || ( -f $TARGET_FILE && -r $TARGET_FILE ) ]] || die "读不了普通文件 $TARGET_FILE"
+  # 在安装依赖、发网络请求之前拒绝格式错误的追加参数。
+  for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
+    [[ $e =~ ^[^[:space:][:cntrl:]:]+:[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "-a 的格式是 分类:域名，收到 $e"
+  done
   CATS=${CATS// /}
   for c in ${CATS//,/ }; do
     [[ $c == none ]] || is_category "$c" || die "没有这个分类: $c，可选：$CATEGORIES none"
@@ -799,7 +804,7 @@ check_deps() {
     HAS_WAIT_N=1
   fi
   # curl 7.49 起才能把所有主机都钉到一个 IP 上，加密 DNS 轮翻页面时要用
-  if curl --connect-to ::127.0.0.1: -V >/dev/null 2>&1; then
+  if curl -q --connect-to ::127.0.0.1: -V >/dev/null 2>&1; then
     HAS_CONNECT_TO=1
   fi
 }
@@ -841,7 +846,9 @@ cleanup() {
 # ---------- 网络基础 ----------
 
 http() {
-  curl -4 -s --connect-timeout "${CONNECT_TIMEOUT:-4}" --max-time "${HTTP_TIMEOUT:-8}" -A "$UA" ${PROXY:+-x "$PROXY"} "$@" 2>/dev/null
+  # 测的是本机或 -x 指定的节点；环境代理、NO_PROXY 和 ~/.curlrc 都不能悄悄改变探测路径。
+  # -q 必须是 curl 的第一个参数，空 -x 明确禁用环境代理。
+  curl -q -4 -s --connect-timeout "${CONNECT_TIMEOUT:-4}" --max-time "${HTTP_TIMEOUT:-8}" -A "$UA" -x "$PROXY" --noproxy '' "$@" 2>/dev/null
 }
 
 # 把请求钉到指定 IP，这样测到的才是这个 IP 的出口
@@ -870,7 +877,14 @@ fetch_own() {
 }
 
 is_ipv4() {
-  [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]
+  [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  local a b c d octet
+  IFS=. read -r a b c d <<<"$1"
+  for octet in "$a" "$b" "$c" "$d"; do
+    # 前导 0 在不同工具里可能当成八进制，不能作为同一个 IP 的另一种写法。
+    [[ $octet == 0 || $octet != 0* ]] && (( octet <= 255 )) || return 1
+  done
+  return 0
 }
 
 is_public_ipv4() {
@@ -896,14 +910,31 @@ extract() {
     trace)        ip=$(sed -n 's/^ip=//p' | tr -d '\r' | head -1) ;;
     fastly)       ip=$(grep -aoE 'id="clientip">[0-9.]+' | sed 's/.*>//' | head -1) ;;
     cloudfront)   ip=$(grep -aoE "class='red'>[0-9.]+" | sed 's/.*>//' | head -1) ;;
-    youtube)      ip=$(grep -aoE '"remoteHost":"[0-9.]+"' | grep -oE '[0-9]+(\.[0-9]+){3}' | head -1) ;;
+    youtube)      ip=$(grep -aoE '"remoteHost":"[0-9.]+"' | sed -n 's/.*"\([0-9.]*\)"$/\1/p' | head -1) ;;
     meta)         ip=$(grep -aoE 'IP address \(trusted\): [0-9.]+' | sed 's/.*: //' | head -1) ;;
   esac
   is_public_ipv4 "$ip" && printf '%s' "$ip"
 }
 
+# DNS 结果保留内网和 0.0.0.0，后面还要靠它们判断 fake-ip / DNS 屏蔽；只丢掉无效地址。
+ipv4_lines() {
+  local ip
+  local -A seen=()
+  while IFS= read -r ip || [[ -n $ip ]]; do
+    is_ipv4 "$ip" || continue
+    [[ -z ${seen[$ip]+x} ]] || continue
+    seen[$ip]=1
+    printf '%s\n' "$ip"
+  done
+}
+
+doh_addresses() {
+  grep -oE '"data"[[:space:]]*:[[:space:]]*"[0-9.]+"' |
+    sed -n 's/.*"\([0-9.]*\)"$/\1/p' | ipv4_lines
+}
+
 # 经 DoH 解析，上游看不到查询。$2 是 ECS，默认用出口所在 /24
-doh() {
+doh_google() {
   local name=$1 ecs=${2-$EXIT_NET} query out
   query="name=$name&type=A"
   [[ -n $ecs ]] && query+="&edns_client_subnet=$ecs"
@@ -912,17 +943,24 @@ doh() {
   else
     out=$(HTTP_TIMEOUT=6 http --resolve dns.google:443:8.8.8.8 "https://dns.google/resolve?$query")
   fi
-  if [[ $out != *'"data"'* ]]; then
-    doh_cf "$name"
+  printf '%s' "$out" | doh_addresses
+}
+
+doh() {
+  local out
+  out=$(doh_google "$@")
+  # CNAME 或 SOA 也有 data 字段，但没有可测的 A 记录时仍需试备用解析器。
+  if [[ -z $out ]]; then
+    doh_cf "$1"
     return 0
   fi
-  printf '%s' "$out" | grep -oE '"data": *"[0-9.]+"' | grep -oE '[0-9]+(\.[0-9]+){3}' | awk '!s[$0]++'
+  printf '%s\n' "$out"
 }
 
 # Cloudflare 的 DoH 不转发 ECS，应答按它自己的节点给，常常和 Google 带出口 ECS 的应答落在不同网段
 doh_cf() {
   HTTP_TIMEOUT=6 http -H 'accept: application/dns-json' "https://1.1.1.1/dns-query?name=$1&type=A" |
-    grep -oE '"data": *"[0-9.]+"' | grep -oE '[0-9]+(\.[0-9]+){3}' | awk '!s[$0]++'
+    doh_addresses
 }
 
 # 每个 /24 取一个 IP，最多 $1 个。分流和拦截规则按网段写，同一个 /24 里的 IP 走法一样
@@ -942,9 +980,9 @@ sys_resolve() {
   if [[ -n $PROXY ]]; then
     doh "$1" ''
   elif command -v getent >/dev/null 2>&1; then
-    $RESOLVE_LIMIT getent ahostsv4 "$1" 2>/dev/null | awk '!s[$1]++ { print $1 }'
+    $RESOLVE_LIMIT getent ahostsv4 "$1" 2>/dev/null | awk '{ print $1 }' | ipv4_lines
   elif command -v dig >/dev/null 2>&1; then
-    dig +short +time=2 +tries=1 "$1" A 2>/dev/null | grep -E '^[0-9.]+$'
+    dig +short +time=2 +tries=1 "$1" A 2>/dev/null | ipv4_lines
   else
     doh "$1"
   fi
@@ -1360,7 +1398,8 @@ probe_target() {
   fi
   if [[ $pass == E ]]; then
     # 两家 DoH 的应答合起来测：同一个域名换个解析器可能就落在别的网段，分流和拦截又常常按网段写
-    mapfile -t ips < <({ doh "$name"; doh_cf "$name"; } | awk '!s[$0]++')
+    # 这里本来就要查两家，不走 doh 的备用逻辑，免得 Google 失败时把 Cloudflare 重复查两次。
+    mapfile -t ips < <({ doh_google "$name"; doh_cf "$name"; } | ipv4_lines)
   else
     mapfile -t ips < <(sys_resolve "$name")
   fi
@@ -1670,14 +1709,14 @@ run_retest() {
 
 # 把一个域名放进 SNI 发给中立回显，输出“出口 状态码”，拿不到回显时出口是 -
 sniff_echo() {
-  local sni=$1 try tmp r='' code=000 proxy=$PROXY
+  local sni=$1 try tmp r='' code=000 PROXY=$PROXY
   # 经代理时由本机把域名钉到回显的 IP 上，节点看到的只有 IP 和 SNI
-  [[ $proxy != socks5h://* ]] || proxy=socks5://${proxy#socks5h://}
+  [[ $PROXY != socks5h://* ]] || PROXY=socks5://${PROXY#socks5h://}
   tmp=$(mktemp "$WORK/s.XXXXXX")
   # 没拿到回显就再试一次，偶发的超时不能当成结论
   for try in 1 2; do
     : > "$tmp"
-    code=$(curl -4 -sk --connect-timeout 4 --max-time 8 ${proxy:+-x "$proxy"} --resolve "$sni:443:$SNI_IP" -H 'Host: ipinfo.io' -o "$tmp" -w '%{http_code}' "https://$sni/ip" 2>/dev/null)
+    code=$(http -k --resolve "$sni:443:$SNI_IP" -H 'Host: ipinfo.io' -o "$tmp" -w '%{http_code}' "https://$sni/ip")
     r=$(extract plain < "$tmp")
     [[ -z $r ]] || break
   done
@@ -1763,7 +1802,7 @@ dns_query_exits() {
 # 本机的 IPv6 出口，没有就输出 -
 ipv6_exit() {
   local v
-  v=$(curl -6 -s --connect-timeout 3 --max-time 5 https://api64.ipify.org 2>/dev/null | tr -d ' \r\n' | head -c 45)
+  v=$(curl -q -6 -s -x '' --noproxy '' --connect-timeout 3 --max-time 5 https://api64.ipify.org 2>/dev/null | tr -d ' \r\n' | head -c 45)
   [[ $v == *:* ]] || v='-'
   printf '%s\n' "$v"
 }
@@ -1804,10 +1843,12 @@ env_info() {
 
 load_targets() {
   local f="$WORK/targets.txt" e bad
-  {
-    catalog | awk -v r="@$REGION" '$1 == r { print $2, $3 }'
-    catalog | awk '$1 !~ /^@/ { print $1, $2 }'
-  } | awk -v want=",$CATS," 'want == ",," || index(want, "," $1 ",")' > "$f.raw"
+  # 地区目标仍排在通用目标前面；一次读清单并筛选，避免反复启动 catalog/awk。
+  catalog | awk -v r="@$REGION" -v want=",$CATS," '
+    function selected(c) { return want == ",," || index(want, "," c ",") }
+    $1 == r && selected($2) { print $2, $3 }
+    $1 !~ /^@/ && selected($1) { common[++n] = $1 " " $2 }
+    END { for (i = 1; i <= n; i++) print common[i] }' > "$f.raw"
   # Windows 上编辑的文件可能带 BOM 和 CRLF
   [[ -z $TARGET_FILE ]] || tr -d '\r' < "$TARGET_FILE" |
     awk 'NR == 1 { sub(/^\357\273\277/, "") } !/^[ \t]*(#|$)/' >> "$f.raw"
@@ -1815,9 +1856,16 @@ load_targets() {
     [[ $e == *:* ]] || die "-a 的格式是 分类:域名，收到 $e"
     printf '%s %s\n' "${e%%:*}" "${e#*:}" >> "$f.raw"
   done
-  # 域名不能以 - 开头，否则会被 getent、dig 当成选项
-  awk 'NF >= 2 && $2 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ && !seen[$2]++ { print $1, $2 }' "$f.raw" > "$f"
-  bad=$(awk 'NF < 2 || $2 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/' "$f.raw" | head -5 | paste -sd';' -)
+  # 域名不能以 - 开头，否则会被 getent、dig 当成选项。DNS 名字不分大小写，
+  # 先统一大小写再去重，避免同一目标重复探测和生成多条互相矛盾的报告。
+  : > "$f.bad"
+  awk -v bad="$f.bad" '
+    NF < 2 || $1 ~ /[[:cntrl:]]/ || $2 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ {
+      if (++errors <= 5) print > bad
+      next
+    }
+    { name = tolower($2); if (!seen[name]++) print $1, name }' "$f.raw" > "$f"
+  bad=$(paste -sd';' "$f.bad")
   [[ -z $bad ]] || warn "跳过格式不对的目标（应为“分类 域名”）：$bad"
   [[ -s $f ]] || die "没有可测的目标，检查 --category 和 --region"
 }
@@ -2285,7 +2333,14 @@ END {
     DV[i] = 0
     if (KD[i] == "T" && EV[i] != "direct") { DV[i] = divert(PT[i]); DH[i] = DIVH }
     if (EX[i] != "-" || MT[i] == "dns" || MT[i] == "dnsblock" || MT[i] == "fakeip") continue
-    infer(PT[i], DV[i])
+    # 校准表在这一轮内不变；同一路径通常被多个目标、两种 DNS 和多轮探测重复使用。
+    # 缓存推断结果，不重复把同一路径与全部校准记录逐一比较。
+    ik = PT[i] SUBSEP DV[i]
+    if (!(ik in IX)) {
+      infer(PT[i], DV[i])
+      IX[ik] = INF_X; IE[ik] = INF_E; ICAND[ik] = INF_CAND
+    }
+    INF_X = IX[ik]; INF_E = IE[ik]; INF_CAND = ICAND[ik]
     # 连不上的 IP 不算走了哪个出口，但路由指向哪条已确认的线路要记下来：被分到别的出口之后连不上，
     # 和目标自己挂了不是一回事
     if (RC[i] == "dead") { if (KD[i] == "T" && INF_E == "inferred") LNX[i] = INF_X; continue }
@@ -3396,6 +3451,19 @@ AWK
 report_share() {
   cat > "$WORK/share.awk" <<'AWK'
 BEGIN { FS = "\t" }
+# 外部的运营商名和自定义分类按纯文本放进 Markdown，不能变成表格分隔符、链接或 HTML。
+function md(s, i, c, out) {
+  out = ""
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == "&") out = out "&amp;"
+    else if (c == "<") out = out "&lt;"
+    else if (c == ">") out = out "&gt;"
+    else if (index("\\|`*_[]", c)) out = out "\\" c
+    else out = out c
+  }
+  return out
+}
 function mask(ip, a) {
   if (!MASK) return ip
   split(ip, a, ".")
@@ -3558,7 +3626,7 @@ END {
   print ""
   print "| 出口 | IP | 运营商 | 国家 |"
   print "|---|---|---|---|"
-  for (j = 1; j <= nx; j++) print "| " XL[j] (XDEF[j] ? "（默认）" : "") " | " mask(XI[j]) (XPN[XI[j]] + 0 > 1 ? "（出口池 " XPN[XI[j]] " 个 IP）" : "") " | " XORG[j] " | " XCC[j] " |"
+  for (j = 1; j <= nx; j++) print "| " XL[j] (XDEF[j] ? "（默认）" : "") " | `" mask(XI[j]) "`" (XPN[XI[j]] + 0 > 1 ? "（出口池 " XPN[XI[j]] " 个 IP）" : "") " | " md(XORG[j]) " | " md(XCC[j]) " |"
   print ""
   print "## 分类概览"
   print ""
@@ -3571,7 +3639,7 @@ END {
   for (c = 1; c <= nc; c++) {
     k = CO[c]
     if (!(k in CCOUNT)) continue
-    line = "| " CL[k] " |"
+    line = "| " md(CL[k]) " |"
     for (j = 1; j <= nx; j++) line = line " " MP[k, XL[j]] + 0 " |"
     if (nblock > 0) line = line " " MP[k, "X"] + 0 " |"
     if (ndeadc > 0) line = line " " MP[k, "!"] + 0 " |"
@@ -3583,7 +3651,7 @@ END {
     k = CO[c]
     if (!(k in CCOUNT)) continue
     print ""
-    print "### " CL[k]
+    print "### " md(CL[k])
     print ""
     print "| 目标 | 出口 |" (HASE ? " 加密 DNS |" : "") " 证据 | 方式 |"
     print "|---|---|" (HASE ? "---|" : "") "---|---|"
@@ -3595,8 +3663,8 @@ END {
       if (RCH[t] == "dead") how = how (how == "" ? "" : "，") "全部 IP 连不上"
       if (DIV[t] > 0) how = how (how == "" ? "" : "，") "路由改道"
       if (SNX[t] != "-" && KC[t] != "sni") how = how (how == "" ? "" : "，") "换 SNI 走 " SNX[t]
-      if (PL[t] == "X") print "| " TN[t] " | 屏蔽 |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " how " |"
-      else print "| " TN[t] " | " PL[t] (PA[t] + 0 < PT[t] + 0 ? "（" PA[t] "/" PT[t] " 轮）" : "") " |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " how " |"
+      if (PL[t] == "X") print "| " md(TN[t]) " | 屏蔽 |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " how " |"
+      else print "| " md(TN[t]) " | " PL[t] (PA[t] + 0 < PT[t] + 0 ? "（" PA[t] "/" PT[t] " 轮）" : "") " |" (HASE ? " " EL[t] " |" : "") " " evid(PE[t], PM[t]) " | " how " |"
     }
   }
   print ""
@@ -3618,8 +3686,20 @@ AWK
 
 report_json() {
   cat > "$WORK/json.awk" <<'AWK'
-BEGIN { FS = "\t" }
-function s(v) { gsub(/[\\"]/, "", v); return "\"" v "\"" }
+BEGIN {
+  FS = "\t"
+  for (i = 0; i < 32; i++) ESC[sprintf("%c", i)] = sprintf("\\u%04x", i)
+  ESC["\\"] = "\\\\"; ESC["\""] = "\\\""
+}
+# 保留字符串原文；删除引号和反斜杠会改坏数据，裸控制字符会让整个 JSON 无法解析。
+function s(v, i, c, out) {
+  out = "\""
+  for (i = 1; i <= length(v); i++) {
+    c = substr(v, i, 1)
+    out = out ((c in ESC) ? ESC[c] : c)
+  }
+  return out "\""
+}
 function sn(v) { return (v == "-" || v == "") ? "null" : s(v) }
 FILENAME == F_ENV { ENVV[$1] = $2; next }
 # 非默认出口的地址池：同一个 /24 里的几个 IP 合成了一个出口，pool 里是这些 IP 各回显了几次

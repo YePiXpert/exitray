@@ -15,9 +15,10 @@ echo "splitcheck 已改名为 ExitRay，这条旧命令还能用。新命令：b
 
 src=${BASH_SOURCE[0]:-}
 if [[ -f $src ]]; then
-  dir=$(cd "$(dirname "$src")" && pwd)
+  # CDPATH 会让 cd 在成功时额外打印路径，污染这里捕获的目录。
+  dir=$(CDPATH= cd -- "$(dirname -- "$src")" && pwd)
   [[ -f $dir/exitray.sh ]] && exec "$BASH" "$dir/exitray.sh" "$@"
 fi
 # 先下载完再运行：下载失败时报错，不拿半截脚本去跑
-code=$(curl -fsSL "$url") && [[ -n $code ]] || { echo "splitcheck: 下载不了 $url" >&2; exit 1; }
+code=$(curl -q -fsSL --connect-timeout 10 --max-time 60 "$url") && [[ -n $code ]] || { echo "splitcheck: 下载不了 $url" >&2; exit 1; }
 exec "$BASH" <(printf '%s\n' "$code") "$@"

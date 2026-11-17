@@ -31,3 +31,7 @@
 /exitray-report*
 /splitcheck-report*
 /diagnostics-*
+
+# Python regression tests and documentation builders.
+__pycache__/
+*.py[cod]
